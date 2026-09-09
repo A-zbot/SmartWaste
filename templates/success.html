@@ -1,0 +1,4 @@
+{% extends "base.html" %}{% block title %}Report Submitted | SmartWaste{% endblock %}
+{% block content %}
+<section class="success-page"><div class="success-card"><div class="success-icon">✓</div><span>REPORT RECEIVED</span><h1>Thank You, {{ name }}!</h1><p>Your waste report has been successfully submitted.</p><div class="report-id">Report ID <b>#SW-{{ "%05d"|format(report_id) }}</b></div><div class="success-actions"><a class="btn primary" href="/report">Submit Another</a><a class="btn outline" href="/">Back Home</a></div></div></section>
+{% endblock %}
