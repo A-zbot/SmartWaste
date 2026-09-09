@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}SmartWaste{% endblock %}</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<nav class="navbar">
+  <a class="brand" href="/">
+    <span class="brand-mark">♻</span>
+    <span><b>Smart<span>Waste</span></b><small>Clean City, Green Future</small></span>
+  </a>
+  <button class="menu-btn" onclick="toggleMenu()">☰</button>
+  <div class="nav-links" id="navLinks">
+    <a href="/">Home</a>
+    <a href="/report">Report Waste</a>
+    <a href="/admin">Dashboard</a>
+    <a href="/about">About Us</a><a href="/team">Our Team</a>
+    <a href="/contact">Contact</a>
+    <a class="nav-cta" href="/report">✈ Report Now</a>
+  </div>
+</nav>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    <div class="flash-wrap">
+      {% for category, msg in messages %}
+        <div class="flash {{ category }}">{{ msg }} <button onclick="this.parentElement.remove()">×</button></div>
+      {% endfor %}
+    </div>
+  {% endif %}
+{% endwith %}
+{% block content %}{% endblock %}
+
+<footer class="footer">
+  <div class="footer-grid">
+    <div>
+      <div class="footer-brand">♻ SmartWaste</div>
+      <p>Smart citizen reporting for cleaner streets, healthier communities and a greener future.</p>
+      <div class="socials"><span>f</span><span>◎</span><span>in</span></div>
+    </div>
+    <div><h4>Quick Links</h4><a href="/">Home</a><a href="/report">Report Waste</a><a href="/admin">Dashboard</a><a href="/about">About Us</a><a href="/team">Our Team</a><a href="/contact">Contact</a></div>
+    <div><h4>Useful Links</h4><a href="/">How It Works</a><a href="/report">Waste Categories</a><a href="/about">Privacy Policy</a><a href="/about">Terms & Conditions</a></div>
+    <div><h4>Contact</h4><p>✉ support@smartwaste.demo</p><p>☎ +91 98765 43210</p><p>📍 India</p></div>
+  </div>
+  <div class="copyright">© 2026 SmartWaste. All rights reserved. <span>Made with ♥ for a cleaner tomorrow</span></div>
+</footer>
+
+<script src="{{ url_for('static', filename='script.js') }}"></script>
+</body></html>
