@@ -1,0 +1,8 @@
+{% extends "base.html" %}{% block title %}Contact Us | SmartWaste{% endblock %}
+{% block content %}
+<section class="page-hero"><div><span>GET IN TOUCH</span><h1>Contact SmartWaste</h1><p>Questions, suggestions or project feedback? Send us a message.</p></div></section>
+<section class="contact-section">
+<div class="contact-info"><h2>Let's Connect</h2><p>We're happy to hear from citizens, administrators and project partners.</p><div class="contact-item">✉<span><b>Email</b><small>support@smartwaste.demo</small></span></div><div class="contact-item">☎<span><b>Phone</b><small>+91 98765 43210</small></span></div><div class="contact-item">📍<span><b>Address</b><small>India</small></span></div><div class="contact-item">🕘<span><b>Working Hours</b><small>Mon–Sat · 9:00 AM–6:00 PM</small></span></div></div>
+<div class="form-card"><div class="form-head"><div><span>MESSAGE US</span><h2>Send a Message</h2></div></div><form method="post"><div class="two"><label>Your Name<input name="name" required placeholder="Enter your name"></label><label>Email<input type="email" name="email" required placeholder="Enter your email"></label></div><label>Subject<input name="subject" required placeholder="What is this about?"></label><label>Message<textarea name="message" required placeholder="Write your message..."></textarea></label><button class="btn primary full">Send Message →</button></form></div>
+</section>
+{% endblock %}
