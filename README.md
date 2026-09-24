@@ -6,6 +6,10 @@ The system allows citizens to report waste-related issues by providing their loc
 
 ---
 
+## 🚀 Live Demo
+
+👉 [**View SmartWaste Live**](https://YOUR-PROJECT.onrender.com)
+
 ## 🚀 Features
 
 ### 👤 Citizen Features
