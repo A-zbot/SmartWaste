@@ -1,0 +1,4 @@
+{% extends "base.html" %}{% block title %}Sign Up | SmartWaste{% endblock %}
+{% block content %}
+<section class="login-page"><div class="login-card"><div class="login-logo">♻</div><span>SMARTWASTE ACCOUNT</span><h1>Create Account</h1><p>Sign up to access the website and track your reports.</p><form method="post"><label>Full Name<input name="name" required autocomplete="name"></label><label>Email<input type="email" name="email" required autocomplete="email"></label><label>Password<input type="password" name="password" required minlength="6" autocomplete="new-password"></label><label>Confirm Password<input type="password" name="confirm" required minlength="6" autocomplete="new-password"></label><button class="btn primary full">Sign Up →</button></form><small>Already have an account? <a href="{{ url_for('login') }}">Sign in</a></small></div></section>
+{% endblock %}

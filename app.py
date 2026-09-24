@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, redirect, url_for, session, f
 import sqlite3, os, uuid, hmac, secrets
 from functools import wraps
 from werkzeug.utils import secure_filename
+from werkzeug.security import generate_password_hash, check_password_hash
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -46,6 +47,15 @@ def init_db():
             email TEXT NOT NULL,
             subject TEXT NOT NULL,
             message TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    con.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            email TEXT NOT NULL UNIQUE,
+            password_hash TEXT NOT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
@@ -154,22 +164,77 @@ def login_required(f):
 def login():
     if session.get("admin"):
         return redirect(url_for("admin"))
+    if session.get("user_id"):
+        return redirect(url_for("home"))
     if request.method == "POST":
-        username = request.form.get("username", "").strip()
+        identifier = request.form.get("username", "").strip()
         password = request.form.get("password", "").strip()
         admin_username = os.environ.get("ADMIN_USERNAME", "")
         admin_password = os.environ.get("ADMIN_PASSWORD", "")
         if (
             admin_username
             and admin_password
-            and hmac.compare_digest(username.encode(), admin_username.encode())
+            and hmac.compare_digest(identifier.encode(), admin_username.encode())
             and hmac.compare_digest(password.encode(), admin_password.encode())
         ):
             session.clear()
             session["admin"] = True
             return redirect(url_for("admin"))
+        con = db()
+        user = con.execute(
+            "SELECT * FROM users WHERE email = ?", (identifier.lower(),)
+        ).fetchone()
+        con.close()
+        if user and check_password_hash(user["password_hash"], password):
+            session.clear()
+            session["user_id"] = user["id"]
+            session["user_name"] = user["name"]
+            return redirect(url_for("home"))
         flash("Invalid username or password.", "error")
     return render_template("login.html")
+
+@app.route("/signup", methods=["GET", "POST"])
+def signup():
+    if session.get("admin"):
+        return redirect(url_for("admin"))
+    if session.get("user_id"):
+        return redirect(url_for("home"))
+    if request.method == "POST":
+        name = request.form.get("name", "").strip()
+        email = request.form.get("email", "").strip().lower()
+        password = request.form.get("password", "")
+        confirm = request.form.get("confirm", "")
+        if not all([name, email, password, confirm]):
+            flash("Please fill all fields.", "error")
+            return redirect(url_for("signup"))
+        if "@" not in email or "." not in email.rsplit("@", 1)[-1]:
+            flash("Please enter a valid email address.", "error")
+            return redirect(url_for("signup"))
+        if len(password) < 6:
+            flash("Password must be at least 6 characters.", "error")
+            return redirect(url_for("signup"))
+        if password != confirm:
+            flash("Passwords do not match.", "error")
+            return redirect(url_for("signup"))
+        con = db()
+        try:
+            cur = con.execute(
+                "INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)",
+                (name, email, generate_password_hash(password)),
+            )
+            con.commit()
+            user_id = cur.lastrowid
+        except sqlite3.IntegrityError:
+            con.close()
+            flash("An account with this email already exists.", "error")
+            return redirect(url_for("signup"))
+        con.close()
+        session.clear()
+        session["user_id"] = user_id
+        session["user_name"] = name
+        flash("Your account has been created successfully.", "success")
+        return redirect(url_for("home"))
+    return render_template("signup.html")
 
 @app.route("/logout")
 def logout():
