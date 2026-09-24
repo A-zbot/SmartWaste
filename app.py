@@ -1,10 +1,16 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash
-import sqlite3, os, uuid
+import sqlite3, os, uuid, hmac, secrets
+from functools import wraps
 from werkzeug.utils import secure_filename
+from dotenv import load_dotenv
+
+load_dotenv()
 
 app = Flask(__name__)
-app.secret_key = os.environ.get("SECRET_KEY", "change-this-secret-key")
+app.secret_key = os.environ.get("SECRET_KEY") or secrets.token_hex(32)
 app.config["MAX_CONTENT_LENGTH"] = 5 * 1024 * 1024
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 UPLOAD_FOLDER = os.path.join(BASE_DIR, "uploads")
@@ -136,14 +142,30 @@ def contact():
         return redirect(url_for("contact"))
     return render_template("contact.html")
 
+def login_required(f):
+    @wraps(f)
+    def wrapped(*args, **kwargs):
+        if not session.get("admin"):
+            return redirect(url_for("login"))
+        return f(*args, **kwargs)
+    return wrapped
+
 @app.route("/login", methods=["GET", "POST"])
 def login():
+    if session.get("admin"):
+        return redirect(url_for("admin"))
     if request.method == "POST":
-        username = request.form.get("username")
-        password = request.form.get("password")
-        admin_username = os.environ.get("ADMIN_USERNAME", "admin")
-        admin_password = os.environ.get("ADMIN_PASSWORD", "admin123")
-        if username == admin_username and password == admin_password:
+        username = request.form.get("username", "").strip()
+        password = request.form.get("password", "").strip()
+        admin_username = os.environ.get("ADMIN_USERNAME", "")
+        admin_password = os.environ.get("ADMIN_PASSWORD", "")
+        if (
+            admin_username
+            and admin_password
+            and hmac.compare_digest(username.encode(), admin_username.encode())
+            and hmac.compare_digest(password.encode(), admin_password.encode())
+        ):
+            session.clear()
             session["admin"] = True
             return redirect(url_for("admin"))
         flash("Invalid username or password.", "error")
@@ -151,14 +173,12 @@ def login():
 
 @app.route("/logout")
 def logout():
-    session.pop("admin", None)
+    session.clear()
     return redirect(url_for("home"))
 
 @app.route("/admin")
+@login_required
 def admin():
-    if not session.get("admin"):
-        return redirect(url_for("login"))
-
     con = db()
     reports = con.execute("SELECT * FROM reports ORDER BY id DESC").fetchall()
     total = con.execute("SELECT COUNT(*) FROM reports").fetchone()[0]
@@ -174,9 +194,8 @@ def admin():
     )
 
 @app.route("/update_status/<int:report_id>/<status>")
+@login_required
 def update_status(report_id, status):
-    if not session.get("admin"):
-        return redirect(url_for("login"))
     if status not in {"Pending", "In Progress", "Resolved"}:
         return redirect(url_for("admin"))
     con = db()
