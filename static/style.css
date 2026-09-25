@@ -37,3 +37,11 @@
 .team-vision-card{margin:35px auto 0;max-width:1100px}
 @media(max-width:900px){.team-grid{grid-template-columns:1fr 1fr}}
 @media(max-width:650px){.team-grid{grid-template-columns:1fr}.team-intro h2{font-size:30px}}
+
+.report-filters{display:flex;flex-wrap:wrap;gap:9px;margin:0 0 16px}
+.report-filters button{border:1px solid var(--line);background:#fff;color:var(--muted);padding:8px 14px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:7px;transition:.2s}
+.report-filters button b{background:#f1f6f3;color:var(--text);border-radius:12px;padding:1px 8px;font-size:11px}
+.report-filters button:hover{border-color:#bcd8c6;color:var(--green)}
+.report-filters button.active{background:var(--green);border-color:var(--green);color:#fff}
+.report-filters button.active b{background:rgba(255,255,255,.22);color:#fff}
+@media(max-width:650px){.report-filters button{flex:1 1 auto;justify-content:center}}

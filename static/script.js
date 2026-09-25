@@ -17,5 +17,18 @@ if(file){
 }
 function filterTable(){
   const q=(document.getElementById("search")?.value||"").toLowerCase();
-  document.querySelectorAll("#reportTable tbody tr").forEach(r=>r.style.display=r.innerText.toLowerCase().includes(q)?"":"none");
+  const active=(document.querySelector("#reportFilters button.active")?.dataset.status||"all").toLowerCase();
+  const rows=document.querySelectorAll("#reportTable tbody tr[data-status]");
+  let shown=0;
+  rows.forEach(r=>{
+    const ok=(active==="all"||r.dataset.status===active)&&r.innerText.toLowerCase().includes(q);
+    r.style.display=ok?"":"none";
+    if(ok)shown++;
+  });
+  const noMatch=document.getElementById("noMatch");
+  if(noMatch)noMatch.style.display=(rows.length&&!shown)?"":"none";
+}
+function setReportFilter(btn){
+  document.querySelectorAll("#reportFilters button").forEach(b=>b.classList.toggle("active",b===btn));
+  filterTable();
 }
