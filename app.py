@@ -1,5 +1,9 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash
-import sqlite3, os, uuid, hmac, secrets
+import sqlite3, os, uuid, hmac, secrets, logging, smtplib, ssl
+from datetime import datetime
+from email.mime.image import MIMEImage
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 from functools import wraps
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -8,6 +12,9 @@ from dotenv import load_dotenv
 load_dotenv()
 
 app = Flask(__name__)
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 app.secret_key = os.environ.get("SECRET_KEY") or secrets.token_hex(32)
 app.config["MAX_CONTENT_LENGTH"] = 5 * 1024 * 1024
 app.config["SESSION_COOKIE_HTTPONLY"] = True
@@ -65,6 +72,85 @@ def init_db():
 def allowed_file(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 
+REPORT_NOTIFY_EMAIL = os.environ.get("REPORT_NOTIFY_EMAIL", "garvitagarwall.army@gmail.com")
+SMTP_HOST = os.environ.get("SMTP_HOST", "smtp.gmail.com")
+SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))
+SMTP_USER = os.environ.get("SMTP_USER", "")
+SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD", "")
+SMTP_FROM = os.environ.get("SMTP_FROM") or SMTP_USER
+
+def send_report_email(report_id, name, mobile, location, waste_type,
+                      priority, description, filename, created_at=None):
+    if not (SMTP_USER and SMTP_PASSWORD):
+        logger.info("SMTP_USER/SMTP_PASSWORD not set - skipping report notification email.")
+        return False
+    if not REPORT_NOTIFY_EMAIL:
+        return False
+
+    ref = f"SW-{report_id:05d}"
+    stamp = created_at or datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    lines = [
+        "A new waste report has been submitted on SmartWaste.",
+        "",
+        f"Report ID   : #{ref}",
+        f"Submitted at: {stamp}",
+        f"Name        : {name}",
+        f"Mobile      : {mobile}",
+        f"Location    : {location}",
+        f"Waste type  : {waste_type}",
+        f"Priority    : {priority}",
+        f"Status      : Pending",
+        f"Image       : {filename or 'not provided'}",
+        "",
+        "Description:",
+        description,
+    ]
+    text_body = "\n".join(lines)
+
+    html_body = f"""<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#1f2937">
+  <h2 style="margin:0 0 12px">New Waste Report <span style="color:#16a34a">#{ref}</span></h2>
+  <table cellpadding="6" style="border-collapse:collapse">
+    <tr><td><b>Submitted at</b></td><td>{stamp}</td></tr>
+    <tr><td><b>Name</b></td><td>{name}</td></tr>
+    <tr><td><b>Mobile</b></td><td>{mobile}</td></tr>
+    <tr><td><b>Location</b></td><td>{location}</td></tr>
+    <tr><td><b>Waste type</b></td><td>{waste_type}</td></tr>
+    <tr><td><b>Priority</b></td><td>{priority}</td></tr>
+    <tr><td><b>Status</b></td><td>Pending</td></tr>
+    <tr><td><b>Image</b></td><td>{filename or 'not provided'}</td></tr>
+  </table>
+  <p style="margin:14px 0 4px"><b>Description</b></p>
+  <p style="white-space:pre-wrap;margin:0">{description}</p>
+</div>"""
+
+    msg = MIMEMultipart("mixed")
+    msg["Subject"] = f"[SmartWaste] New report #{ref} - {priority} priority"
+    msg["From"] = SMTP_FROM
+    msg["To"] = REPORT_NOTIFY_EMAIL
+    msg.attach(MIMEText(text_body, "plain", "utf-8"))
+    msg.attach(MIMEText(html_body, "html", "utf-8"))
+
+    image_path = os.path.join(app.config["UPLOAD_FOLDER"], filename) if filename else ""
+    if image_path and os.path.isfile(image_path):
+        with open(image_path, "rb") as fh:
+            attachment = MIMEImage(fh.read(), name=filename)
+        attachment.add_header("Content-Disposition", "attachment", filename=filename)
+        msg.attach(attachment)
+
+    context = ssl.create_default_context()
+    if SMTP_PORT == 465:
+        with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, timeout=15, context=context) as server:
+            server.login(SMTP_USER, SMTP_PASSWORD)
+            server.send_message(msg)
+    else:
+        with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=15) as server:
+            server.starttls(context=context)
+            server.login(SMTP_USER, SMTP_PASSWORD)
+            server.send_message(msg)
+    logger.info("Report #%s notification emailed to %s", report_id, REPORT_NOTIFY_EMAIL)
+    return True
+
 @app.route("/")
 def home():
     con = db()
@@ -106,8 +192,17 @@ def report():
             VALUES (?, ?, ?, ?, ?, ?, ?)
         """, (name, mobile, location, waste_type, priority, description, filename))
         report_id = cur.lastrowid
+        created_at = con.execute(
+            "SELECT created_at FROM reports WHERE id=?", (report_id,)
+        ).fetchone()[0]
         con.commit()
         con.close()
+
+        try:
+            send_report_email(report_id, name, mobile, location, waste_type,
+                              priority, description, filename, created_at)
+        except Exception:
+            logger.exception("Could not send notification email for report #%s", report_id)
 
         return render_template("success.html", report_id=report_id, name=name)
 

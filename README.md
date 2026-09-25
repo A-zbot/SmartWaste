@@ -33,6 +33,29 @@ The system allows citizens to report waste-related issues by providing their loc
 - Users can send messages through the contact page
 - Messages are stored in the database for administrative review
 
+### 📧 Email Notifications
+
+- Every submitted waste report is emailed to the configured inbox (`REPORT_NOTIFY_EMAIL`, defaults to `garvitagarwall.army@gmail.com`)
+- The email contains the report ID, reporter details, location, priority, description and the uploaded image as an attachment
+- Sending is best-effort: a mail failure never blocks or breaks a report submission
+
+---
+
+## ⚙️ Configuration
+
+Copy `.env.example` to `.env` and fill in the values.
+
+| Variable | Purpose |
+|---|---|
+| `SECRET_KEY` | Flask session secret |
+| `ADMIN_USERNAME` / `ADMIN_PASSWORD` | Admin dashboard login |
+| `REPORT_NOTIFY_EMAIL` | Inbox that receives new-report emails (default `garvitagarwall.army@gmail.com`) |
+| `SMTP_HOST` / `SMTP_PORT` | SMTP server, defaults `smtp.gmail.com` / `587` |
+| `SMTP_USER` / `SMTP_PASSWORD` | SMTP login — for Gmail use an [App Password](https://myaccount.google.com/apppasswords) (regular passwords are rejected) |
+| `SMTP_FROM` | Sender address, defaults to `SMTP_USER` |
+
+If `SMTP_USER` or `SMTP_PASSWORD` is missing, the app runs normally and simply skips the email.
+
 ---
 
 ## 🏗️ Project Architecture
