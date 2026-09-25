@@ -17,11 +17,12 @@
   <div class="nav-links" id="navLinks">
     <a href="/">Home</a>
     <a href="/report">Report Waste</a>
-    <a href="/admin">Dashboard</a>
+    {% if session.get('admin') %}<a href="/admin">Dashboard</a>{% endif %}
     <a href="/track">Track Report</a>
     {% if session.get('user_id') %}<a href="/my_reports">My Reports</a>{% endif %}
     <a href="/about">About Us</a><a href="/team">Our Team</a>
     <a href="/contact">Contact</a>
+    {% if session.get('admin') %}<span class="admin-chip">ADMIN</span>{% endif %}
     {% if session.get('admin') or session.get('user_id') %}<a href="/logout">Logout</a>{% else %}<a href="/login">Login</a><a href="/signup">Sign Up</a>{% endif %}
     <a class="nav-cta" href="/report">✈ Report Now</a>
   </div>
@@ -45,7 +46,7 @@
       <p>Smart citizen reporting for cleaner streets, healthier communities and a greener future.</p>
       <div class="socials"><span>f</span><span>◎</span><span>in</span></div>
     </div>
-    <div><h4>Quick Links</h4><a href="/">Home</a><a href="/report">Report Waste</a><a href="/track">Track Report</a><a href="/admin">Dashboard</a><a href="/about">About Us</a><a href="/team">Our Team</a><a href="/contact">Contact</a></div>
+    <div><h4>Quick Links</h4><a href="/">Home</a><a href="/report">Report Waste</a><a href="/track">Track Report</a>{% if session.get('admin') %}<a href="/admin">Dashboard</a>{% endif %}<a href="/about">About Us</a><a href="/team">Our Team</a><a href="/contact">Contact</a></div>
     <div><h4>Useful Links</h4><a href="/">How It Works</a><a href="/report">Waste Categories</a><a href="/about">Privacy Policy</a><a href="/about">Terms & Conditions</a></div>
     <div><h4>Contact</h4><p>✉ support@smartwaste.demo</p><p>☎ +91 99711 45113</p><p>📍 India</p></div>
   </div>
