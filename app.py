@@ -285,7 +285,10 @@ def login():
             session["user_id"] = user["id"]
             session["user_name"] = user["name"]
             return redirect(url_for("home"))
-        flash("Invalid username or password.", "error")
+        if not (admin_username and admin_password) and not user:
+            flash("Admin sign-in is not configured. Set ADMIN_USERNAME and ADMIN_PASSWORD in your .env file.", "error")
+        else:
+            flash("Invalid username or password.", "error")
     return render_template("login.html")
 
 @app.route("/signup", methods=["GET", "POST"])
@@ -365,6 +368,11 @@ def update_status(report_id, status):
     return redirect(url_for("admin"))
 
 init_db()
+
+if not (os.environ.get("ADMIN_USERNAME") and os.environ.get("ADMIN_PASSWORD")):
+    logger.warning(
+        "ADMIN_USERNAME/ADMIN_PASSWORD are not set - admin login to /admin will be rejected."
+    )
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=False)
