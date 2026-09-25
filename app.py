@@ -66,11 +66,28 @@ def init_db():
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
+    cols = [row[1] for row in con.execute("PRAGMA table_info(reports)").fetchall()]
+    if "user_id" not in cols:
+        con.execute("ALTER TABLE reports ADD COLUMN user_id INTEGER")
     con.commit()
     con.close()
 
 def allowed_file(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
+
+@app.template_filter("mask_name")
+def mask_name(value):
+    v = (value or "").strip()
+    if len(v) <= 2:
+        return "*" * len(v)
+    return v[0] + "*" * (len(v) - 2) + v[-1]
+
+@app.template_filter("mask_mobile")
+def mask_mobile(value):
+    digits = "".join(ch for ch in (value or "") if ch.isdigit())
+    if len(digits) < 4:
+        return "*" * len(digits)
+    return digits[:2] + "*" * (len(digits) - 4) + digits[-2:]
 
 REPORT_NOTIFY_EMAIL = os.environ.get("REPORT_NOTIFY_EMAIL", "garvitagarwall.army@gmail.com")
 SMTP_HOST = os.environ.get("SMTP_HOST", "smtp.gmail.com")
@@ -188,9 +205,10 @@ def report():
         con = db()
         cur = con.execute("""
             INSERT INTO reports
-            (name, mobile, location, waste_type, priority, description, image)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        """, (name, mobile, location, waste_type, priority, description, filename))
+            (name, mobile, location, waste_type, priority, description, image, user_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, (name, mobile, location, waste_type, priority, description, filename,
+              session.get("user_id")))
         report_id = cur.lastrowid
         created_at = con.execute(
             "SELECT created_at FROM reports WHERE id=?", (report_id,)
@@ -251,6 +269,15 @@ def login_required(f):
     @wraps(f)
     def wrapped(*args, **kwargs):
         if not session.get("admin"):
+            return redirect(url_for("login"))
+        return f(*args, **kwargs)
+    return wrapped
+
+def citizen_required(f):
+    @wraps(f)
+    def wrapped(*args, **kwargs):
+        if not session.get("user_id"):
+            flash("Please log in to view your reports.", "error")
             return redirect(url_for("login"))
         return f(*args, **kwargs)
     return wrapped
@@ -338,6 +365,49 @@ def signup():
 def logout():
     session.clear()
     return redirect(url_for("home"))
+
+@app.route("/my_reports")
+@citizen_required
+def my_reports():
+    con = db()
+    reports = con.execute(
+        "SELECT * FROM reports WHERE user_id=? ORDER BY id DESC",
+        (session["user_id"],),
+    ).fetchall()
+    con.close()
+    counts = {"Pending": 0, "In Progress": 0, "Resolved": 0}
+    for r in reports:
+        counts[r["status"]] = counts.get(r["status"], 0) + 1
+    return render_template(
+        "my_reports.html",
+        reports=reports,
+        total=len(reports),
+        pending=counts["Pending"],
+        progress=counts["In Progress"],
+        resolved=counts["Resolved"],
+    )
+
+@app.route("/track")
+def track():
+    q = request.args.get("q", "").strip()
+    results = []
+    if q:
+        token = q.lstrip("#").strip()
+        by_ref = token[:3].upper() == "SW-"
+        if by_ref:
+            token = token[3:].strip()
+        digits = "".join(ch for ch in token if ch.isdigit())
+        con = db()
+        if digits and (by_ref or (token.isdigit() and len(digits) <= 6)):
+            results = con.execute(
+                "SELECT * FROM reports WHERE id=? ORDER BY id DESC", (int(digits),)
+            ).fetchall()
+        elif digits:
+            results = con.execute(
+                "SELECT * FROM reports WHERE mobile=? ORDER BY id DESC", (digits,)
+            ).fetchall()
+        con.close()
+    return render_template("track.html", q=q, results=results)
 
 @app.route("/admin")
 @login_required

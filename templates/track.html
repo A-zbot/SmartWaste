@@ -1,0 +1,22 @@
+{% extends "base.html" %}{% block title %}Track Report | SmartWaste{% endblock %}
+{% from "_report_card.html" import report_card %}
+{% block content %}
+<section class="page-hero"><div><span>REPORT STATUS</span><h1>Track Your Report</h1><p>Enter your report reference or mobile number to see its live status.</p></div></section>
+<section class="section">
+<div class="track-box">
+  <form method="get" action="/track">
+    <label>Report ID or Mobile Number<input name="q" value="{{ q }}" placeholder="e.g. SW-00001 or 9876543210" autofocus></label>
+    <button class="btn primary" type="submit">Track Report →</button>
+  </form>
+  <p class="track-hint">Your report reference is shown on the submission confirmation page and in your email notification.</p>
+</div>
+{% if q %}
+  {% if results %}
+  <p class="track-count">{{ results|length }} report{{ 's' if results|length != 1 else '' }} found for "<b>{{ q }}</b>"</p>
+  <div class="report-list">{% for r in results %}{{ report_card(r, masked=true) }}{% endfor %}</div>
+  {% else %}
+  <div class="empty-state">🔎<h3>No Report Found</h3><p>Check the reference number or mobile number and try again.</p></div>
+  {% endif %}
+{% endif %}
+</section>
+{% endblock %}

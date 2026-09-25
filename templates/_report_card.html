@@ -1,0 +1,28 @@
+{% macro report_card(r, masked=false) %}
+<article class="report-card">
+  <div class="report-card-head">
+    <div>
+      <span class="report-ref">REPORT #SW-{{ "%05d"|format(r.id) }}</span>
+      <h3>{{ r.location }}</h3>
+      <p>{{ r.waste_type }} · {{ r.priority }} priority · Submitted {{ r.created_at }}</p>
+    </div>
+    <span class="status {{ r.status|lower|replace(' ','-') }}">{{ r.status }}</span>
+  </div>
+  <div class="rt-steps">
+    {% set s = r.status %}
+    <div class="rt-step done"><i>✓</i><span><b>Report Submitted</b><small>Received by SmartWaste</small></span></div>
+    <div class="rt-step {{ 'done' if s != 'Pending' else 'active' }}"><i>{{ '✓' if s != 'Pending' else '2' }}</i><span><b>In Progress</b><small>{{ 'Cleanup team dispatched' if s != 'Pending' else 'Awaiting team assignment' }}</small></span></div>
+    <div class="rt-step {{ 'done' if s == 'Resolved' else ('active' if s == 'In Progress' else 'todo') }}"><i>{{ '✓' if s == 'Resolved' else '3' }}</i><span><b>Resolved</b><small>{{ 'Area cleaned up' if s == 'Resolved' else 'Not completed yet' }}</small></span></div>
+  </div>
+  <div class="report-card-body">
+    {% if r.image %}<a href="{{ url_for('uploaded_file', filename=r.image) }}" target="_blank"><img class="thumb-lg" src="{{ url_for('uploaded_file', filename=r.image) }}" alt="Report photo"></a>{% endif %}
+    <div class="report-card-text">
+      <p class="report-desc">{{ r.description }}</p>
+      <div class="report-meta">
+        <span>👤 {{ (r.name|mask_name) if masked else r.name }}</span>
+        <span>☎ {{ (r.mobile|mask_mobile) if masked else r.mobile }}</span>
+      </div>
+    </div>
+  </div>
+</article>
+{% endmacro %}

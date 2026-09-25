@@ -1,0 +1,13 @@
+{% extends "base.html" %}{% block title %}My Reports | SmartWaste{% endblock %}
+{% from "_report_card.html" import report_card %}
+{% block content %}
+<section class="page-hero"><div><span>MY REPORTS</span><h1>Track Your Complaints</h1><p>Follow how each of your waste reports is progressing.</p></div></section>
+<section class="section">
+<div class="dash-stats"><div><i>📊</i><b>{{ total }}</b><small>My Reports</small></div><div><i>🟡</i><b>{{ pending }}</b><small>Pending</small></div><div><i>🔵</i><b>{{ progress }}</b><small>In Progress</small></div><div><i>🟢</i><b>{{ resolved }}</b><small>Resolved</small></div></div>
+{% if reports %}
+<div class="report-list">{% for r in reports %}{{ report_card(r) }}{% endfor %}</div>
+{% else %}
+<div class="empty-state">🗑️<h3>No Reports Yet</h3><p>You haven't submitted any waste reports. Start by reporting an issue near you.</p><a class="btn primary" href="/report">Report Waste</a></div>
+{% endif %}
+</section>
+{% endblock %}
