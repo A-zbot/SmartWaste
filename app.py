@@ -15,7 +15,25 @@ app = Flask(__name__)
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-app.secret_key = os.environ.get("SECRET_KEY") or secrets.token_hex(32)
+# Never sign session cookies with a placeholder or other weak key.
+WEAK_SECRET_KEYS = {
+    "", "secret", "changeme", "change-me", "change_this_password",
+    "dev", "development", "replace-with-a-long-random-secret",
+}
+_secret_key = os.environ.get("SECRET_KEY", "").strip()
+if _secret_key.lower() in WEAK_SECRET_KEYS or len(_secret_key) < 16:
+    _is_production = bool(os.environ.get("RENDER")) or os.environ.get("FLASK_ENV") == "production"
+    if _is_production:
+        raise RuntimeError(
+            "SECRET_KEY is missing or weak. Set a long random SECRET_KEY "
+            "(Render generates one automatically in render.yaml)."
+        )
+    _secret_key = secrets.token_hex(32)
+    logger.warning(
+        "SECRET_KEY missing or weak - using an ephemeral development key. "
+        "Set a long random SECRET_KEY in .env for stable sessions."
+    )
+app.secret_key = _secret_key
 app.config["MAX_CONTENT_LENGTH"] = 5 * 1024 * 1024
 app.config["SESSION_COOKIE_HTTPONLY"] = True
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
@@ -265,10 +283,12 @@ def contact():
         return redirect(url_for("contact"))
     return render_template("contact.html")
 
-def login_required(f):
+def admin_required(f):
+    """Deny access to every admin-only route unless the session holds an
+    authenticated admin (set solely by a successful admin login)."""
     @wraps(f)
     def wrapped(*args, **kwargs):
-        if not session.get("admin"):
+        if session.get("admin") is not True:
             return redirect(url_for("login"))
         return f(*args, **kwargs)
     return wrapped
@@ -410,7 +430,7 @@ def track():
     return render_template("track.html", q=q, results=results)
 
 @app.route("/admin")
-@login_required
+@admin_required
 def admin():
     con = db()
     reports = con.execute("SELECT * FROM reports ORDER BY id DESC").fetchall()
@@ -427,7 +447,7 @@ def admin():
     )
 
 @app.route("/update_status/<int:report_id>/<status>")
-@login_required
+@admin_required
 def update_status(report_id, status):
     if status not in {"Pending", "In Progress", "Resolved"}:
         return redirect(url_for("admin"))
