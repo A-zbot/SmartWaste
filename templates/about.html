@@ -1,6 +1,55 @@
-{% extends "base.html" %}{% block title %}About Us | SmartWaste{% endblock %}
+{% extends "base.html" %}{% block title %}About · SmartWaste{% endblock %}
 {% block content %}
-<section class="page-hero"><div><span>ABOUT SMARTWASTE</span><h1>Technology for a Cleaner Community</h1><p>SmartWaste connects citizens and waste-management teams through simple digital reporting.</p></div></section>
-<section class="about-grid section"><div class="about-visual">🌍<div>♻️</div>🌱</div><div><span class="eyebrow">OUR MISSION</span><h2>Turn civic problems into actionable reports.</h2><p>Our goal is to make waste reporting simple, transparent and accessible on phones and computers.</p><ul class="check-list"><li>✓ Citizen-driven waste reporting</li><li>✓ Location-based complaint system</li><li>✓ Image evidence identification</li><li>✓ Status tracking for authorities</li><li>✓ Responsive mobile and laptop interface</li></ul></div></section>
-<section class="section pale"><div class="section-head"><span>PROJECT OWNER</span><h2>Website & Contact Details</h2></div><div class="owner-card"><div class="avatar">SW</div><div><h3>SmartWaste Project Team</h3><p>Website Owner / Administrator</p><p>✉ support@smartwaste.demo &nbsp; ☎ +91 98765 43210</p></div></div></section>
+<section class="page-hero">
+  <span class="eyebrow">About the project</span>
+  <h1>SmartWaste 2.0 — AI-Driven Urban Waste Management</h1>
+  <p>A predictive decision-support system that turns citizen waste complaints into
+     classified, geolocated, clustered and forecasted intelligence for municipal teams.</p>
+</section>
+
+<section class="section" style="padding-top:30px">
+  <div class="grid grid-2 container" style="max-width:1040px">
+    <div class="card card-pad">
+      <span class="eyebrow">Problem</span>
+      <h3 style="margin:8px 0">Complaints pile up without structure</h3>
+      <p class="muted">Municipal call centres receive thousands of waste reports per month.
+      Text is unstructured, duplicate reports are common, hotspots are discovered late,
+      and resource allocation is reactive. Citizens get no visibility of what happens next.</p>
+    </div>
+    <div class="card card-pad">
+      <span class="eyebrow">Solution</span>
+      <h3 style="margin:8px 0">A closed-loop decision-support pipeline</h3>
+      <p class="muted">Every complaint is classified by a trained model, screened for
+      duplicates with NLP similarity, mapped, clustered with DBSCAN, and folded into a
+      demand forecast with honest baselines - all explainable to the operator.</p>
+    </div>
+  </div>
+</section>
+
+<section class="section pale">
+  <div class="section-head">
+    <span class="eyebrow">Modules</span>
+    <h2>What the system actually does</h2>
+  </div>
+  <div class="grid grid-3 container" style="max-width:1040px">
+    <div class="step"><i>B</i><strong>Supervised AI classification</strong><p>TF-IDF + Logistic Regression / Random Forest, stratified split, 5-fold cross-validation, published metrics and confusion matrices.</p></div>
+    <div class="step"><i>C</i><strong>NLP duplicate detection</strong><p>Cosine similarity over TF-IDF vectors combined with haversine distance and category match - suggestions, never silent rejections.</p></div>
+    <div class="step"><i>D</i><strong>DBSCAN hotspots</strong><p>Haversine DBSCAN over stored coordinates with configurable radius and min-samples; recurring zones surface on the map.</p></div>
+    <div class="step"><i>E</i><strong>Forecasting</strong><p>Random Forest regressor on lag/calendar features versus seasonal-naive and moving-average baselines, evaluated on a chronological hold-out.</p></div>
+    <div class="step"><i>F</i><strong>Explainability</strong><p>Signed feature contributions for every prediction plus database-derived context factors (age, duplicates, hotspot).</p></div>
+    <div class="step"><i>G</i><strong>Decision support</strong><p>Backlog, SLA and low-confidence queues translated into concrete, evidence-backed recommendations for operators.</p></div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-head">
+    <span class="eyebrow">Principles</span>
+    <h2>Honest by design</h2>
+  </div>
+  <div class="grid grid-3 container" style="max-width:1040px">
+    <div class="step"><i>1</i><strong>No fabricated numbers</strong><p>Every KPI, chart, recommendation and metric is computed from the live database or a measured evaluation report.</p></div>
+    <div class="step"><i>2</i><strong>No fake AI</strong><p>If a model is missing or uncertain the UI says so; low confidence is flagged for human review instead of being hidden.</p></div>
+    <div class="step"><i>3</i><strong>Safe evolution</strong><p>Schema migrations are forward-only and idempotent so existing complaints survive upgrades.</p></div>
+  </div>
+</section>
 {% endblock %}

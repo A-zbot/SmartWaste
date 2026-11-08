@@ -1,0 +1,153 @@
+{% extends "admin_base.html" %}
+{% block title %}Hotspot map{% endblock %}
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='vendor/leaflet.css') }}">
+{% endblock %}
+{% block crumb %}Decision support · Hotspot map{% endblock %}
+{% block heading %}Geospatial hotspot map{% endblock %}
+
+{% block content %}
+<div class="kpi-grid">
+  <div class="kpi"><div class="kpi-label">Mapped complaints</div>
+    <div class="kpi-value">{{ map_summary.total }}</div>
+    <div class="kpi-sub">{{ map_summary.unresolved }} still open</div></div>
+  <div class="kpi kpi-danger"><div class="kpi-label">Urgent on map</div>
+    <div class="kpi-value">{{ map_summary.urgent }}</div><div class="kpi-sub">High / Emergency</div></div>
+  <div class="kpi"><div class="kpi-label">Hotspot clusters</div>
+    <div class="kpi-value">{{ stats.clusters }}</div>
+    <div class="kpi-sub">{{ stats.complaints_in_clusters }} complaints inside</div></div>
+  <div class="kpi kpi-warn"><div class="kpi-label">Recurring hotspots</div>
+    <div class="kpi-value">{{ stats.recurring }}</div>
+    <div class="kpi-sub">≥ {{ stats.recurring_threshold }} complaints each</div></div>
+  <div class="kpi kpi-info"><div class="kpi-label">Without coordinates</div>
+    <div class="kpi-value">{{ map_summary.without_coords }}</div>
+    <div class="kpi-sub">excluded from DBSCAN</div></div>
+</div>
+
+<form class="card" method="get" action="{{ url_for('admin.map_view') }}">
+  <div class="filter-bar" style="border-bottom:none;border-radius:var(--radius)">
+    <div class="filter"><label for="mStart">From</label>
+      <input type="date" id="mStart" name="start" value="{{ filters.start }}"></div>
+    <div class="filter"><label for="mEnd">To</label>
+      <input type="date" id="mEnd" name="end" value="{{ filters.end }}"></div>
+    <div class="filter"><label for="mCat">Category</label>
+      <select id="mCat" name="category">
+        <option value="">All</option>
+        {% for c in categories %}<option value="{{ c }}" {{ 'selected' if filters.category == c }}>{{ c }}</option>{% endfor %}
+      </select></div>
+    <div class="filter"><label for="mStatus">Status</label>
+      <select id="mStatus" name="status">
+        <option value="">All</option>
+        {% for s in statuses %}<option value="{{ s }}" {{ 'selected' if filters.status == s }}>{{ s }}</option>{% endfor %}
+      </select></div>
+    <div class="filter"><label for="mArea">Area</label>
+      <input id="mArea" name="area" list="mAreaList" placeholder="Any area" value="{{ filters.area }}">
+      <datalist id="mAreaList">{% for a in areas %}<option value="{{ a }}">{% endfor %}</datalist></div>
+    <button class="btn btn-primary btn-sm" type="submit">Apply</button>
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('admin.map_view') }}">Reset</a>
+  </div>
+</form>
+
+<div class="grid grid-2" style="align-items:start">
+  <div class="map-wrap" id="map"></div>
+
+  <div style="display:grid;gap:18px">
+    <div class="card card-pad">
+      <span class="eyebrow">Re-run DBSCAN clustering</span>
+      <p class="muted" style="font-size:13px;margin-top:8px">
+        Current run: {% if run_params %}
+          eps <b>{{ run_params.eps_meters }} m</b> · min-samples <b>{{ run_params.min_samples }}</b>
+          · metric <b>{{ run_params.metric }}</b> · {{ run_params.points_with_coordinates }} geocoded points
+          · {{ run_params.noise_points }} noise · {{ run_params.computed_at[:16].replace('T',' ') }}
+        {% else %}<b>clustering has not been run yet</b>{% endif %}.
+      </p>
+      <form method="post" action="{{ url_for('admin.recluster') }}" class="mt-2">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="field-row">
+          <label class="field">Radius (eps, metres)
+            <input type="number" name="eps_meters" min="50" max="10000" step="10"
+                   value="{{ run_params.eps_meters if run_params else default_eps }}">
+          </label>
+          <label class="field">Min complaints per cluster
+            <input type="number" name="min_samples" min="2" max="100"
+                   value="{{ run_params.min_samples if run_params else default_min }}">
+          </label>
+        </div>
+        <input type="hidden" name="start" value="{{ filters.start }}">
+        <input type="hidden" name="end" value="{{ filters.end }}">
+        <input type="hidden" name="category" value="{{ filters.category }}">
+        <input type="hidden" name="status" value="{{ filters.status }}">
+        <input type="hidden" name="area" value="{{ filters.area }}">
+        <button class="btn btn-primary btn-block" type="submit">↻ Recompute hotspots</button>
+      </form>
+      {% if run_params and run_params.notes %}
+      <div class="mini-note warn mt-2" style="font-size:12.5px">
+        {% for note in run_params.notes %}{{ note }}{% if not loop.last %}<br>{% endif %}{% endfor %}
+      </div>
+      {% endif %}
+    </div>
+
+    <div class="card card-pad">
+      <span class="eyebrow">Detected clusters ({{ clusters|length }})</span>
+      {% if clusters %}
+      <div class="table-scroll mt-2">
+        <table class="metric-table">
+          <thead><tr><th>Label</th><th class="num">Complaints</th><th class="num">Open</th><th>Top category</th></tr></thead>
+          <tbody>
+            {% for c in clusters %}
+            <tr>
+              <td><span class="cluster-badge">{{ c.label }}</span></td>
+              <td class="num">{{ c.complaint_count }}</td>
+              <td class="num">{{ c.unresolved_count }}</td>
+              <td>{{ c.top_category }}<br><small class="muted">r = {{ c.radius_km }} km</small></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <p class="muted" style="font-size:13px;margin-top:8px">
+        No clusters stored. Run clustering above - DBSCAN needs at least
+        {{ default_min }} geocoded complaints within {{ default_eps }} m of each other.</p>
+      {% endif %}
+    </div>
+
+    <div class="card card-pad">
+      <span class="eyebrow">Map legend</span>
+      <div class="map-legend mt-2">
+        <span><i style="background:#3B82F6"></i> Submitted</span>
+        <span><i style="background:#8B5CF6"></i> Under review</span>
+        <span><i style="background:#0EA5E9"></i> Assigned</span>
+        <span><i style="background:#F59E0B"></i> In progress</span>
+        <span><i style="background:#16A34A"></i> Resolved</span>
+        <span><i style="background:#EF4444"></i> Rejected / urgent</span>
+        <span><i style="border:2px dashed #0E9F6E;background:rgba(14,159,110,.15)"></i> Hotspot radius</span>
+      </div>
+      <p class="muted" style="font-size:12.5px;margin-top:10px">
+        {{ map_summary.filtered }} complaint(s) in the current filter scope;
+        {{ map_summary.total }} carry coordinates. Marker radius grows for High/Emergency urgency.
+      </p>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='vendor/leaflet.js') }}"></script>
+<script>
+window.MAP_DATA = {
+  markers: {{ markers|tojson }},
+  clusters: [
+    {% for c in clusters %}
+    {"label": {{ c.label|tojson }},
+     "lat": {{ c.centroid_lat }},
+     "lng": {{ c.centroid_lng }},
+     "count": {{ c.complaint_count }},
+     "unresolved": {{ c.unresolved_count }},
+     "radius_km": {{ c.radius_km if c.radius_km is not none else 'null' }}}
+    {% if not loop.last %},{% endif %}
+    {% endfor %}
+  ]
+};
+</script>
+{% endblock %}

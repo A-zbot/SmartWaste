@@ -1,0 +1,81 @@
+text,category,urgency,source
+"Garbage has been lying near the residential park for three days. It is creating a bad smell.",Open Garbage,High,handwritten_synthetic
+"The bin outside our flats is brimming over and rubbish is strewn across the footpath.",Open Garbage,Medium,handwritten_synthetic
+"Somebody dumped a mountain of trash at the corner last night and dogs have ripped the bags open.",Open Garbage,High,handwritten_synthetic
+"A dead crow is lying inside the rubbish heap by the road. Children pass this spot every day.",Open Garbage,Emergency,handwritten_synthetic
+"Wrapper packets and cups are scattered near the bench. A quick sweep will fix it.",Open Garbage,Low,handwritten_synthetic
+"Trash collection has been skipped twice this week, so the whole street stinks now.",Open Garbage,High,handwritten_synthetic
+"Our household kachra is left beside the bin because the van never comes on time.",Open Garbage,Medium,handwritten_synthetic
+"Torn medical dressings were tossed in with the garbage right outside the clinic gate.",Open Garbage,Emergency,handwritten_synthetic
+"I noticed a couple of empty packets near the park railing. Nothing major, just untidy.",Open Garbage,Low,handwritten_synthetic
+"Every evening the shopkeepers sweep their waste into the lane and it stays there overnight.",Open Garbage,Medium,handwritten_synthetic
+"The rubbish has piled up for over a week near the market and the stench is awful.",Open Garbage,High,handwritten_synthetic
+"Someone keeps burning the trash after midnight; smoke comes straight into our bedrooms.",Open Garbage,High,handwritten_synthetic
+"A stray dog's body is decomposing under the garbage near the school compound wall.",Open Garbage,Emergency,handwritten_synthetic
+"There is a small heap of litter at our gate today. Please add it to the routine round.",Open Garbage,Low,handwritten_synthetic
+"Fruit peels, plastic and leftovers are lying mixed beside the community bin since morning.",Open Garbage,Medium,handwritten_synthetic
+"Fly-tipped bags appeared at the lane end again and the smell is spreading to our kitchen.",Open Garbage,High,handwritten_synthetic
+"Bottles and polythene are jamming the storm drain; the water is backing up onto the road.",Plastic Waste,High,handwritten_synthetic
+"We have bagged clean plastic bottles for the scrap dealer. When will someone pick them up?",Plastic Waste,Low,handwritten_synthetic
+"Plastic cups from the tea stall are blowing into the gutter all day.",Plastic Waste,Medium,handwritten_synthetic
+"A heap of discarded packaging has sat by the lane for days and mongrels tear it apart.",Plastic Waste,High,handwritten_synthetic
+"Our society keeps dry plastic aside for recycling. A pickup this week would help.",Plastic Waste,Low,handwritten_synthetic
+"People toss snack packets on the footpath instead of using the bin.",Plastic Waste,Medium,handwritten_synthetic
+"The naala is completely choked with plastic wrappers and dirty water is spilling out.",Plastic Waste,High,handwritten_synthetic
+"Please collect the sorted plastic from our doorstep whenever the kabadiwala round is due.",Plastic Waste,Low,handwritten_synthetic
+"Old thermocol and bottles are left beside the dumpster and keep blowing around.",Plastic Waste,Medium,handwritten_synthetic
+"Can you schedule a dry plastic collection drive in our block this month?",Plastic Waste,Low,handwritten_synthetic
+"Rotten vegetables and leftovers have been heaped near the market for four days. The stench is unbearable.",Food Waste,High,handwritten_synthetic
+"Kitchen waste is dumped uncovered in our lane, so flies hover over everything.",Food Waste,Medium,handwritten_synthetic
+"Some fruit peels are lying on the pavement near the park. Trivial, but please sweep them.",Food Waste,Low,handwritten_synthetic
+"Rotis and curry were thrown beside the bin and stray cows scatter them every night.",Food Waste,Medium,handwritten_synthetic
+"Half-eaten food and packaging are rotting outside the school compound. The kids hold their noses.",Food Waste,High,handwritten_synthetic
+"The canteen's daily waste bin smells badly and needs its regular emptying.",Food Waste,Medium,handwritten_synthetic
+"A few sweet wrappers and a banana peel are near the bench today.",Food Waste,Low,handwritten_synthetic
+"Garbage with leftover food has not been lifted since Tuesday and the whole block reeks.",Food Waste,High,handwritten_synthetic
+"Vegetable cuttings from the stall end up on the road every single evening.",Food Waste,Medium,handwritten_synthetic
+"Please include our street in the routine wet waste pickup. The small waste is piling up.",Food Waste,Low,handwritten_synthetic
+"Broken bricks and mortar are half-blocking the road outside our gate. Two-wheelers struggle to pass.",Construction Debris,Medium,handwritten_synthetic
+"A mound of rubble has blocked the footpath near the school for a week. Kids walk in traffic.",Construction Debris,High,handwritten_synthetic
+"The builder stacked sand and tiles on the pavement without warning.",Construction Debris,Medium,handwritten_synthetic
+"Small plaster scraps from our renovation are lying outside. A routine pickup would clear them.",Construction Debris,Low,handwritten_synthetic
+"Debris was dumped at the lane mouth and now even the ambulance cannot turn easily.",Construction Debris,High,handwritten_synthetic
+"Cement bags and wood pieces are scattered where the construction work is going on.",Construction Debris,Medium,handwritten_synthetic
+"A little gravel fell during the painting work and needs a quick brush-up.",Construction Debris,Low,handwritten_synthetic
+"Rubble has been lying at the corner for ten days and dust flies into the houses.",Construction Debris,High,handwritten_synthetic
+"Please send a vehicle to remove the leftover bricks from our street.",Construction Debris,Low,handwritten_synthetic
+"Our old television and tangled wires are kept at the porch for recycling pickup.",E-Waste,Low,handwritten_synthetic
+"Someone is burning cable insulation behind the block. Acrid smoke is coming into the flats.",E-Waste,High,handwritten_synthetic
+"The repair shop dumps cracked circuit boards and chargers in the alley.",E-Waste,Medium,handwritten_synthetic
+"Please take away the dead UPS and batteries from our gate.",E-Waste,Low,handwritten_synthetic
+"Broken fans and monitors were left on the footpath where children pick through them.",E-Waste,High,handwritten_synthetic
+"We have an old laptop, charger and kettle ready for e-waste collection.",E-Waste,Low,handwritten_synthetic
+"Discarded phone batteries and adapters are lying loose near the bin.",E-Waste,Medium,handwritten_synthetic
+"Could you arrange a fortnightly e-waste pickup for our neighbourhood?",E-Waste,Low,handwritten_synthetic
+"Used syringes and blood-stained cotton were found dumped beside the hospital gate this morning.",Medical Waste,Emergency,handwritten_synthetic
+"A torn biohazard bag lay open at the school entrance. Imagine the risk.",Medical Waste,Emergency,handwritten_synthetic
+"The dispensary stores dressings and vials for days before removal, and the smell is strong.",Medical Waste,High,handwritten_synthetic
+"Empty medicine bottles and gloves are left with ordinary rubbish near the chemist.",Medical Waste,Medium,handwritten_synthetic
+"Please arrange the scheduled removal of clinic waste from our sector.",Medical Waste,Low,handwritten_synthetic
+"Sharps and gauze are lying in the open where stray dogs scavenge.",Medical Waste,Emergency,handwritten_synthetic
+"Our nursing home keeps waste bags outside too long before the van comes.",Medical Waste,High,handwritten_synthetic
+"A few medicine cartons from the health centre await proper disposal.",Medical Waste,Low,handwritten_synthetic
+"Sewer water entered our ground-floor kitchen overnight. The floor is filthy and it stinks.",Drain & Sewer Waste,Emergency,handwritten_synthetic
+"The manhole outside is overflowing and filthy water is reaching the doorstep of every house.",Drain & Sewer Waste,Emergency,handwritten_synthetic
+"The choked nullah is throwing up black water and the footpath has become unusable.",Drain & Sewer Waste,High,handwritten_synthetic
+"Leaves and silt block the gutter, so stagnant water gathers after every rain.",Drain & Sewer Waste,Medium,handwritten_synthetic
+"Please put our street on the regular drain-desilting list.",Drain & Sewer Waste,Low,handwritten_synthetic
+"Blocked naala water flooded two homes in our lane last night.",Drain & Sewer Waste,Emergency,handwritten_synthetic
+"Foul-smelling drain water sits on the road near the shops all week.",Drain & Sewer Waste,High,handwritten_synthetic
+"The small channel behind the houses does not flow and sludge builds up.",Drain & Sewer Waste,Medium,handwritten_synthetic
+"Routine drain cleaning in our colony is due this quarter.",Drain & Sewer Waste,Low,handwritten_synthetic
+"Our lane has not been swept for nine days. A thick layer of dust coats everything.",Street Sweeping,High,handwritten_synthetic
+"The sweeper misses our street most weeks and dirt collects at the corners.",Street Sweeping,Medium,handwritten_synthetic
+"Please send the cleaning crew for the usual morning round.",Street Sweeping,Low,handwritten_synthetic
+"Mud and silt left by the rains are still on the footpath near the school.",Street Sweeping,High,handwritten_synthetic
+"Dry leaves keep dropping and the road needs its normal brushing.",Street Sweeping,Low,handwritten_synthetic
+"Dust from the unswept road is entering our shop every afternoon.",Street Sweeping,Medium,handwritten_synthetic
+"A light film of dust near the gate can be handled in the regular sweep.",Street Sweeping,Low,handwritten_synthetic
+"The market stretch is cleaned only once in a while and litter stays behind.",Street Sweeping,Medium,handwritten_synthetic
+"Street dust near the playground is making the children sneeze.",Street Sweeping,High,handwritten_synthetic
+"Could you restore the daily sweeping schedule for our block?",Street Sweeping,Low,handwritten_synthetic

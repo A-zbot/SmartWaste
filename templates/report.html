@@ -1,18 +1,94 @@
-{% extends "base.html" %}{% block title %}Report Waste | SmartWaste{% endblock %}
+{% extends "base.html" %}{% block title %}Report Waste · SmartWaste{% endblock %}
 {% block content %}
-<section class="page-hero"><div><span>REPORT AN ISSUE</span><h1>Report Waste in Your Area</h1><p>Your report can help identify the problem and speed up action.</p></div></section>
-<section class="form-section">
+<section class="page-hero">
+  <span class="eyebrow">Citizen portal</span>
+  <h1>Report a waste problem</h1>
+  <p>Your description is analysed by the trained complaint model the moment you submit -
+     it predicts the category, urgency and any similar open complaints nearby.</p>
+</section>
+
+<section class="section" style="padding-top:36px">
 <div class="form-layout">
-  <aside class="side-card"><div class="big-icon">♻</div><h2>Make a Difference</h2><p>Accurate location and photo evidence make your report more useful.</p><div class="side-item">📍 <span><b>Accurate Location</b><small>Tell us the exact area.</small></span></div><div class="side-item">📷 <span><b>Photo Evidence</b><small>Upload a clear image.</small></span></div><div class="side-item">⚡ <span><b>Quick Action</b><small>Submit in a few minutes.</small></span></div></aside>
-  <div class="form-card"><div class="form-head"><div><span>WASTE REPORT FORM</span><h2>Submit a Report</h2></div><b>01</b></div>
-  <form method="post" enctype="multipart/form-data">
-    <div class="two"><label>Your Name<input name="name" required placeholder="Enter your name"></label><label>Mobile Number<input name="mobile" pattern="[0-9]{10}" required placeholder="10 digit mobile number"></label></div>
-    <label>Waste Location<div class="location-row"><input id="location" name="location" required placeholder="Area, street or landmark"><button type="button" onclick="getLocation()">📍 Use My Location</button></div></label>
-    <div class="two"><label>Waste Category<select name="waste_type" required><option value="">Select category</option><option>General Garbage</option><option>Plastic Waste</option><option>Food Waste</option><option>E-Waste</option><option>Construction Waste</option><option>Medical Waste</option></select></label><label>Report Priority<select name="priority" required><option value="">Select priority</option><option>Low</option><option>Medium</option><option>High</option><option>Emergency</option></select></label></div>
-    <label>Describe the Problem<textarea name="description" required maxlength="500" placeholder="Tell us what you found..."></textarea></label>
-    <label>Upload Waste Photo<div class="dropzone" id="dropzone"><input type="file" name="image" id="image" accept="image/*" required><div id="uploadText">📸<strong>Click to upload or drag and drop</strong><small>PNG, JPG, JPEG or WEBP</small></div><img id="preview"></div></label>
-    <button class="btn primary full" type="submit">✈ Submit Waste Report <span>→</span></button>
-    <small class="privacy">🔒 Your information is used only for managing this report.</small>
-  </form></div>
-</div></section>
+  <aside class="side-card">
+    <h2>Make it actionable</h2>
+    <p>Accurate location, a clear description and a photo give the field team everything they need.</p>
+    <div class="side-item"><i>◎</i><span><b>GPS capture</b><small>One tap drops your coordinates; you can correct the address text afterwards.</small></span></div>
+    <div class="side-item"><i>◫</i><span><b>Photo evidence</b><small>PNG/JPG/WEBP up to 5&nbsp;MB.</small></span></div>
+    <div class="side-item"><i>✦</i><span><b>AI preview</b><small>Run the duplicate check before submitting to see if it is already reported.</small></span></div>
+    <div class="side-item"><i>◷</i><span><b>Track everything</b><small>You receive a tracking ID and status notifications.</small></span></div>
+  </aside>
+
+  <div class="form-card">
+    <div class="form-head">
+      <div><span class="eyebrow">Complaint form</span><h2>Submit a report</h2></div>
+      <span class="step-index">01</span>
+    </div>
+
+    <form method="post" enctype="multipart/form-data" id="reportForm">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" id="latitude" name="latitude" value="">
+      <input type="hidden" id="longitude" name="longitude" value="">
+
+      <div class="field-row">
+        <label class="field">Your name
+          <input name="name" required maxlength="80" placeholder="Full name" value="{{ prefill.name }}">
+        </label>
+        <label class="field">Mobile number
+          <input name="mobile" required inputmode="numeric" pattern="[0-9]{10,13}" maxlength="13" placeholder="10 digit mobile number">
+        </label>
+      </div>
+
+      <label class="field">Waste location
+        <div class="location-row">
+          <input id="location" name="location" required maxlength="200" placeholder="Area, street or landmark">
+          <button type="button" class="btn btn-ghost btn-sm" onclick="useMyLocation()">◎ Use my location</button>
+          <button type="button" class="btn btn-ghost btn-sm" onclick="clearLocation()">✕</button>
+        </div>
+        <span class="field-help" id="geoStatus">GPS coordinates are stored separately so the map and hotspot detection can use them.</span>
+      </label>
+
+      <div class="field-row">
+        <label class="field">Waste category
+          <select name="waste_type" id="waste_type" required>
+            <option value="">Select category</option>
+            {% for cat in categories %}<option>{{ cat }}</option>{% endfor %}
+          </select>
+          <span class="field-help">The AI model will independently predict a category from your description.</span>
+        </label>
+        <label class="field">Reported priority
+          <select name="priority" required>
+            <option value="">Select priority</option>
+            {% for p in priorities %}<option>{{ p }}</option>{% endfor %}
+          </select>
+          <span class="field-help">Combined with the model's predicted urgency for triage.</span>
+        </label>
+      </div>
+
+      <label class="field">Describe the problem
+        <textarea id="description" name="description" required minlength="15" maxlength="2000"
+          placeholder="e.g. Garbage has been lying near the residential park for three days and it is creating a bad smell."></textarea>
+        <span class="field-help">Mention how long it has been there and what impact it causes - the classifier uses these signals.</span>
+      </label>
+
+      <div class="dup-panel" id="dupPanel">
+        <h4>Possible duplicate check
+          <button type="button" class="btn btn-ghost btn-sm" id="dupCheckBtn">Check for similar reports</button>
+        </h4>
+        <div id="dupResults"><div class="dup-loading" id="dupMeta">Optional - compares your text with recent complaints using TF-IDF similarity and distance.</div></div>
+      </div>
+
+      <label class="field">Photo evidence
+        <div class="dropzone" id="dropzone">
+          <input type="file" name="image" id="image" accept="image/png,image/jpeg,image/webp">
+          <div class="dz-hint" id="uploadText"><b>Click to upload or drag &amp; drop</b>PNG, JPG, JPEG or WEBP · max 5 MB</div>
+          <img id="preview" alt="Preview">
+        </div>
+      </label>
+
+      <button class="btn btn-primary btn-block" type="submit">Submit complaint →</button>
+      <small class="privacy-note">🔒 Your contact details are used only for this complaint and its notifications.</small>
+    </form>
+  </div>
+</div>
+</section>
 {% endblock %}

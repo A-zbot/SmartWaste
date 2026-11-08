@@ -1,43 +1,80 @@
-{% extends "base.html" %}{% block title %}SmartWaste | Clean City{% endblock %}
+{% extends "base.html" %}{% block title %}SmartWaste · AI-Driven Waste Management{% endblock %}
 {% block content %}
 <section class="hero">
   <div class="hero-copy">
-    <div class="eyebrow">🌿 A CLEAN CITY IS OUR RESPONSIBILITY</div>
-    <h1>Together We Can<br><span>Build a Cleaner</span><br>& Greener Tomorrow</h1>
-    <p>SmartWaste is a citizen-driven platform that helps you report waste issues in your area and make your city a better place to live.</p>
-    <div class="hero-actions"><a class="btn primary" href="/report">♻ Report Waste</a><a class="btn outline" href="#how">◎ Learn More</a></div>
-    <div class="mini-points"><span>✓ Easy Reporting</span><span>📷 Photo Evidence</span><span>📍 Location Based</span><span>⚡ Quick Action</span></div>
+    <span class="eyebrow">AI-Driven Urban Waste Management</span>
+    <h1>Turn a street-level complaint into <em>actionable municipal intelligence</em></h1>
+    <p class="lead">Report waste in seconds. Every complaint is classified by a trained
+      text model, checked for duplicates, placed on the map and folded into
+      hotspot detection and demand forecasting for the city operations team.</p>
+    <div class="hero-actions">
+      <a class="btn btn-primary" href="{{ url_for('complaints.report') }}">Report Waste →</a>
+      <a class="btn btn-ghost" href="{{ url_for('complaints.track') }}">Track a Complaint</a>
+    </div>
+    <div class="hero-points">
+      <span>✓ ML category + urgency prediction</span>
+      <span>✓ Duplicate complaint warnings</span>
+      <span>✓ Hotspot clustering (DBSCAN)</span>
+      <span>✓ Status timeline &amp; notifications</span>
+    </div>
   </div>
-  <div class="hero-art">
-    <div class="city-fade">🏙️</div><div class="bin">♻</div><div class="bags">🗑️ 🗑️</div>
-    <div class="stat-float"><b>{{ total }}</b><small>Total Reports</small><b>{{ resolved }}</b><small>Resolved</small><b>{{ progress }}</b><small>In Progress</small></div>
-  </div>
+
+  <aside class="hero-panel">
+    <h4>Live platform status</h4>
+    <div class="hero-stats">
+      <div class="hero-stat"><b>{{ stats.total }}</b><small>Complaints</small></div>
+      <div class="hero-stat"><b>{{ stats.resolved }}</b><small>Resolved</small></div>
+      <div class="hero-stat"><b>{{ stats.pending }}</b><small>Open</small></div>
+    </div>
+    <div class="hero-feed">
+      <div><span>Areas covered</span><b class="hl">{{ stats.areas }}</b></div>
+      <div><span>Complaints under AI analysis</span><b class="hl">{{ stats.ai_analysed }}</b></div>
+      <div><span>Currently in progress</span><b>{{ stats.progress }}</b></div>
+      <div><span>Citizens can track by ID</span><b>SW-00001 format</b></div>
+    </div>
+  </aside>
 </section>
 
-<section id="how" class="section">
-  <div class="section-head"><span>HOW IT WORKS</span><h2>Reporting Waste Has Never Been Easier</h2><p>Four simple steps to help create a cleaner neighborhood.</p></div>
-  <div class="steps">
-    <div class="step"><i>1</i><strong>Find a Problem</strong><p>Spot garbage or waste in your area.</p></div>
-    <div class="step"><i>2</i><strong>Take a Photo</strong><p>Capture clear photo evidence.</p></div>
-    <div class="step"><i>3</i><strong>Submit Report</strong><p>Add location and details.</p></div>
-    <div class="step"><i>4</i><strong>Track Action</strong><p>Authorities can review the report.</p></div>
+<section class="section">
+  <div class="section-head">
+    <span class="eyebrow">How it works</span>
+    <h2>Four steps from report to resolution</h2>
+    <p>The same complaint record powers the citizen view and the municipal decision-support console.</p>
+  </div>
+  <div class="grid grid-4 container">
+    <div class="step"><i>1</i><strong>Describe the problem</strong><p>Category, location with GPS, photo evidence and what you observed.</p></div>
+    <div class="step"><i>2</i><strong>AI analyses it instantly</strong><p>TF-IDF + classifier predicts category and urgency with a real confidence score.</p></div>
+    <div class="step"><i>3</i><strong>Authorities triage</strong><p>Admins see explanations, duplicate candidates and hotspot context.</p></div>
+    <div class="step"><i>4</i><strong>You track every change</strong><p>Status timeline, administrator remarks, resolution evidence and feedback.</p></div>
   </div>
 </section>
 
 <section class="section pale">
-  <div class="section-head"><span>WASTE CATEGORIES</span><h2>Report Different Types of Waste</h2></div>
-  <div class="waste-grid">
-    <div>🗑️<b>General Garbage</b><small>Household & mixed waste</small></div>
-    <div>♻️<b>Plastic Waste</b><small>Bottles, bags & packaging</small></div>
-    <div>🍎<b>Food Waste</b><small>Organic & food waste</small></div>
-    <div>💻<b>E-Waste</b><small>Electronic items</small></div>
-    <div>🧱<b>Construction Waste</b><small>Bricks & building waste</small></div>
-    <div>🏥<b>Medical Waste</b><small>Healthcare waste</small></div>
+  <div class="section-head">
+    <span class="eyebrow">Waste categories</span>
+    <h2>The taxonomy the model is trained on</h2>
+    <p>Eight supervised categories; the classifier also tells administrators when it is uncertain.</p>
+  </div>
+  <div class="grid grid-4 container">
+    {% for cat in categories %}
+    <div class="cat-card">
+      <div class="cat-icon">♻</div>
+      <b>{{ cat }}</b>
+      <small>Tracked with AI classification</small>
+    </div>
+    {% endfor %}
   </div>
 </section>
 
-<section class="impact">
-  <div class="section-head light"><span>WHY SMARTWASTE?</span><h2>Small Reports. Real Impact.</h2></div>
-  <div class="impact-grid"><div>🌱<b>Clean Environment</b><p>Help maintain cleaner and healthier neighborhoods.</p></div><div>🏙️<b>Smart City Mission</b><p>Support smart civic initiatives in your city.</p></div><div>🤝<b>Community Power</b><p>Every report makes the community stronger.</p></div><div>🌍<b>Better Tomorrow</b><p>Small actions today create a better future.</p></div></div>
+<section class="section">
+  <div class="section-head">
+    <span class="eyebrow">Why SmartWaste 2.0</span>
+    <h2>Beyond a complaint form</h2>
+  </div>
+  <div class="grid grid-3 container">
+    <div class="step"><i>AI</i><strong>Supervised complaint intelligence</strong><p>Logistic Regression and Random Forest compared with cross-validation; the selected model's real metrics are published on the admin console.</p></div>
+    <div class="step"><i>GEO</i><strong>Geospatial hotspot detection</strong><p>DBSCAN over stored coordinates finds recurring problem zones - configurable radius, honest handling of missing locations.</p></div>
+    <div class="step"><i>FX</i><strong>Predictive decision support</strong><p>Daily volumes are forecast with a seasonal baseline versus a Random Forest regressor, evaluated with MAE/RMSE on a chronological hold-out.</p></div>
+  </div>
 </section>
 {% endblock %}

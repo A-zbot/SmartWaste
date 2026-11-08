@@ -1,0 +1,227 @@
+{% extends "admin_base.html" %}
+{% block title %}Models &amp; evaluation{% endblock %}
+{% block crumb %}System · Models{% endblock %}
+{% block heading %}Model training &amp; evaluation{% endblock %}
+
+{% block content %}
+{% if not evaluation.available %}
+<div class="empty-state">
+  <h3>No trained models yet</h3>
+  <p>Artifacts are missing from {{ evaluation.status.model_dir }}. Train them from the
+     committed labelled dataset to enable AI classification, urgency prediction and explainability.</p>
+  <form method="post" action="{{ url_for('admin.retrain') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button class="btn btn-primary" type="submit">Train models now</button>
+  </form>
+</div>
+{% else %}
+
+<div class="kpi-grid">
+  {% for task in ['category', 'urgency'] %}
+  {% set t = evaluation.status.tasks[task] %}
+  <div class="kpi {{ 'kpi-info' if task == 'urgency' }}">
+    <div class="kpi-label">{{ task|capitalize }} model</div>
+    <div class="kpi-value" style="font-size:19px">{{ t.best_model or '—' }}</div>
+    <div class="kpi-sub">{{ t.n_samples or '?' }} samples · {{ t.labels|length if t.labels else '?' }} classes</div>
+  </div>
+  {% endfor %}
+  <div class="kpi kpi-warn"><div class="kpi-label">Trained at</div>
+    <div class="kpi-value" style="font-size:16px">
+      {{ evaluation.dataset.trained_at[:19].replace('T',' ') if evaluation.dataset.trained_at else '—' }}</div>
+    <div class="kpi-sub">{{ evaluation.status.model_dir }}</div></div>
+  <div class="kpi"><div class="kpi-label">Retraining</div>
+    <div class="kpi-value" style="font-size:16px">{{ 'running…' if retrain.running else ('done' if retrain.finished_at else 'idle') }}</div>
+    <div class="kpi-sub">{{ retrain.error or (retrain.finished_at[:19].replace('T',' ') if retrain.finished_at else 'not requested this session') }}</div></div>
+</div>
+
+<div class="status-strip">
+  <span>scikit-learn: <b>{{ evaluation.dataset.library_versions.get('scikit-learn', evaluation.dataset.library_versions.get('sklearn', '—')) }}</b></span>
+  <span>Python: <b>{{ evaluation.dataset.library_versions.get('python', '—') }}</b></span>
+  <span>NLTK ready: <b>{{ 'yes' if preprocessing.nltk_available else 'regex fallback' }}</b></span>
+  <span>Stopwords: <b>{{ preprocessing.stopwords }}</b></span>
+  <span>Lemmatiser: <b>{{ preprocessing.lemmatiser or 'none' }}</b></span>
+  <span>Tokenizer: <b>{{ preprocessing.tokenizer }}</b></span>
+</div>
+
+<div class="forecast-note">
+  <div><b>Measured, not claimed.</b>
+    <div class="mt-1" style="font-size:12.5px;color:var(--muted)">{{ evaluation.disclaimer }}</div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="table-toolbar">
+    <div><h3>Candidate comparison</h3>
+      <p>Every row was actually cross-validated (5-fold, stratified) and scored on the held-out test split.</p></div>
+    <form method="post" action="{{ url_for('admin.retrain') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button class="btn btn-primary btn-sm" type="submit" {{ 'disabled' if retrain.running }}>↻ Retrain from dataset</button>
+    </form>
+  </div>
+  <div class="table-scroll">
+    <table class="metric-table">
+      <thead>
+        <tr>
+          <th>Task</th><th>Model</th><th class="num">CV F1 (macro)</th><th class="num">CV std</th>
+          <th class="num">Test acc.</th><th class="num">Test F1</th>
+          <th class="num">Precision</th><th class="num">Recall</th><th class="num">Fit (s)</th><th>Selected</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in evaluation.comparison %}
+        <tr class="{{ 'selected' if row.selected }}">
+          <td>{{ row.task }}</td>
+          <td><b>{{ row.model }}</b></td>
+          <td class="num">{{ '%.4f'|format(row.cv_f1_macro_mean) if row.cv_f1_macro_mean is not none else '—' }}</td>
+          <td class="num">{{ '%.4f'|format(row.cv_f1_macro_std) if row.cv_f1_macro_std is not none else '—' }}</td>
+          <td class="num">{{ '%.4f'|format(row.test_accuracy) if row.test_accuracy is not none else '—' }}</td>
+          <td class="num">{{ '%.4f'|format(row.test_f1_macro) if row.test_f1_macro is not none else '—' }}</td>
+          <td class="num">{{ '%.4f'|format(row.test_precision_macro) if row.test_precision_macro is not none else '—' }}</td>
+          <td class="num">{{ '%.4f'|format(row.test_recall_macro) if row.test_recall_macro is not none else '—' }}</td>
+          <td class="num">{{ '%.2f'|format(row.fit_seconds) if row.fit_seconds is not none else '—' }}</td>
+          <td>{{ '✓ selected' if row.selected else '—' }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="10" class="muted" style="text-align:center;padding:24px">No comparison rows in the reports.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="grid grid-2" style="align-items:start">
+  {% for task in ['category', 'urgency'] %}
+  {% set m = evaluation.metrics[task] %}
+  <div class="chart-card">
+    <div class="chart-head"><div><h4>Per-class metrics — {{ task }}</h4>
+      <p class="chart-sub">Selected model: {{ m.best_model or '—' }}
+        · split {{ m.split.n_train if m.split else '?' }} train / {{ m.split.n_test if m.split else '?' }} test</p></div></div>
+    {% if m.per_class %}
+    <div class="table-scroll">
+      <table class="metric-table">
+        <thead><tr><th>Class</th><th class="num">Precision</th><th class="num">Recall</th><th class="num">F1</th><th class="num">Support</th></tr></thead>
+        <tbody>
+          {% for label in m.labels %}
+          {% set c = m.per_class.get(label) %}
+          {% if c %}
+          <tr>
+            <td>{{ label }}</td>
+            <td class="num">{{ '%.3f'|format(c.precision) if c.precision is not none else '—' }}</td>
+            <td class="num">{{ '%.3f'|format(c.recall) if c.recall is not none else '—' }}</td>
+            <td class="num">{{ '%.3f'|format(c['f1-score']) if c['f1-score'] is not none else '—' }}</td>
+            <td class="num">{{ c.support }}</td>
+          </tr>
+          {% endif %}
+          {% endfor %}
+          {% if m.per_class.get('macro_avg') %}
+          <tr class="selected">
+            <td><b>macro avg</b></td>
+            <td class="num">{{ '%.3f'|format(m.per_class['macro_avg'].precision) }}</td>
+            <td class="num">{{ '%.3f'|format(m.per_class['macro_avg'].recall) }}</td>
+            <td class="num">{{ '%.3f'|format(m.per_class['macro_avg']['f1-score']) }}</td>
+            <td class="num">{{ m.per_class['macro_avg'].support }}</td>
+          </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="muted">No per-class report available.</p>
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
+
+<div class="grid grid-2" style="align-items:start">
+  {% for task in ['category', 'urgency'] %}
+  {% for partition in ['test', 'holdout'] %}
+  {% set cm = evaluation.confusion[task][partition] %}
+  <div class="chart-card">
+    <div class="chart-head"><div><h4>Confusion — {{ task }} ({{ partition }})</h4>
+      <p class="chart-sub">{% if cm %}{{ cm.rows }} row{{ 's' if cm.rows != 1 }} · rows = actual, columns = predicted{% else %}not available for this partition{% endif %}</p></div></div>
+    {% if cm %}
+    <div class="table-scroll">
+      <table class="confusion">
+        <thead>
+          <tr><th>actual \ predicted</th>{% for l in cm.labels %}<th>{{ l[:14] }}</th>{% endfor %}</tr>
+        </thead>
+        <tbody>
+          {% for row in cm.matrix %}
+          {% set r = loop.index0 %}
+          <tr>
+            <td class="rowh">{{ cm.labels[r] }}</td>
+            {% for cell in row %}
+            <td class="{{ 'diag' if loop.index0 == r else 'off' }}">{{ cell }}</td>
+            {% endfor %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="muted">No matrix stored for this partition.</p>
+    {% endif %}
+  </div>
+  {% endfor %}
+  {% endfor %}
+</div>
+
+<div class="grid grid-2" style="align-items:start">
+  <div class="chart-card">
+    <div class="chart-head"><div><h4>Independent hand-written hold-out</h4>
+      <p class="chart-sub">80 complaints written separately from the training set</p></div></div>
+    <div class="table-scroll">
+      <table class="metric-table">
+        <thead><tr><th>Task</th><th class="num">Rows</th><th class="num">Accuracy</th><th class="num">F1 (macro)</th><th>Note</th></tr></thead>
+        <tbody>
+          {% for task in ['category', 'urgency'] %}
+          {% set h = evaluation.holdout[task] %}
+          <tr>
+            <td>{{ task }}</td>
+            <td class="num">{{ h.rows if h else '—' }}</td>
+            <td class="num">{{ '%.4f'|format(h.metrics.accuracy) if h and h.metrics and h.metrics.accuracy is not none else '—' }}</td>
+            <td class="num">{{ '%.4f'|format(h.metrics.f1_macro) if h and h.metrics and h.metrics.f1_macro is not none else '—' }}</td>
+            <td><small class="muted">{{ h.note if h else 'no hold-out report' }}</small></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="chart-card">
+    <div class="chart-head"><div><h4>Datasets &amp; label distribution</h4>
+      <p class="chart-sub">Committed files used for training</p></div></div>
+    <div class="table-scroll">
+      <table class="metric-table">
+        <thead><tr><th>Dataset</th><th>Details</th></tr></thead>
+        <tbody>
+          {% for name, info in evaluation.dataset.datasets.items() %}
+          <tr><td><b>{{ name }}</b></td>
+            <td>{% if info is mapping %}
+              {% for k, v in info.items() %}<span class="mono">{{ k }}={{ v }}</span>{% if not loop.last %} · {% endif %}{% endfor %}
+              {% else %}{{ info }}{% endif %}</td></tr>
+          {% else %}
+          <tr><td colspan="2" class="muted">No dataset metadata in training_meta.json.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% for task in ['category', 'urgency'] %}
+    {% set m = evaluation.metrics[task] %}
+    {% if m.label_distribution %}
+    <div class="mt-3">
+      <span class="eyebrow">{{ task }} label counts (train+test)</span>
+      <div class="feature-tags mt-1">
+        {% for label, n in m.label_distribution.items() %}
+        <span class="feature-tag">{{ label }} <em>{{ n }}</em></span>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+    {% endfor %}
+  </div>
+</div>
+
+{% endif %}
+{% endblock %}

@@ -1,4 +1,80 @@
-{% extends "base.html" %}{% block title %}Report Submitted | SmartWaste{% endblock %}
+{% extends "base.html" %}{% block title %}Complaint Submitted · SmartWaste{% endblock %}
 {% block content %}
-<section class="success-page"><div class="success-card"><div class="success-icon">✓</div><span>REPORT RECEIVED</span><h1>Thank You, {{ name }}!</h1><p>Your waste report has been successfully submitted.</p><div class="report-id">Report ID <b>#SW-{{ "%05d"|format(report_id) }}</b></div><div class="success-actions"><a class="btn primary" href="/track?q=SW-{{ "%05d"|format(report_id) }}">Track This Report</a>{% if session.get('user_id') %}<a class="btn outline" href="/my_reports">My Reports</a>{% else %}<a class="btn outline" href="/report">Submit Another</a>{% endif %}</div></div></section>
+<section class="success-page">
+  <div class="success-card card" style="padding:34px">
+    <div class="success-icon">✓</div>
+    <span class="eyebrow">Complaint received</span>
+    <h1 style="margin:6px 0 4px;font-size:26px">Thank you, {{ report.name }}!</h1>
+    <p class="muted">Your report is in the municipal queue and the AI analysis is attached below.</p>
+
+    <div class="ref">
+      Tracking ID
+      <b>{{ report.tracking_id }}</b>
+      Submitted {{ report.created_at|dt }}
+    </div>
+
+    <div class="card card-pad mb-2" style="text-align:left;background:var(--surface-2)">
+      <span class="eyebrow">AI analysis (model output)</span>
+      <div class="kv mt-1">
+        <dt>Predicted category</dt>
+        <dd>{{ ai.category or 'model unavailable' }}
+          {% if ai.category %}<span class="badge badge-ai">{{ (ai.confidence * 100)|round|int }}% confidence</span>{% endif %}
+          {% if ai.needs_review %}<span class="badge badge-warn">Low confidence - admin will verify</span>{% endif %}
+        </dd>
+        <dt>Predicted urgency</dt>
+        <dd>{{ ai.urgency or 'model unavailable' }} <span class="muted">(you reported: {{ report.priority }})</span></dd>
+        <dt>Recommended action</dt>
+        <dd>{{ ai.recommended_action }}</dd>
+      </div>
+      {% if explanation.model and explanation.model.category and explanation.model.category.keywords %}
+      <div class="mt-2">
+        <span class="eyebrow">Signals the model read</span>
+        <div class="feature-tags mt-1">
+          {% for k in explanation.model.category.keywords %}
+          <span class="feature-tag">{{ k.term }} <em>{{ k.weight }}</em></span>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+    </div>
+
+    {% if duplicates.checked and duplicates.matches %}
+    <div class="card card-pad mb-2" style="text-align:left">
+      <span class="eyebrow" style="color:var(--warn)">Possible similar complaints</span>
+      <p class="muted" style="font-size:13px;margin-top:6px">
+        {{ duplicates.match_count }} recent complaint(s) are textually similar
+        {% if duplicates.self_location_known %}and within {{ duplicates.thresholds.distance_km }} km{% endif %}.
+        Nothing was rejected - this is informational.</p>
+      <div class="dup-list mt-2">
+        {% for m in duplicates.matches %}
+        <div class="dup-item {{ 'likely' if m.is_likely else '' }}">
+          <b>{{ m.tracking_id }}</b> · {{ m.category }} ·
+          <span class="badge status-{{ m.status|status_class }}">{{ m.status }}</span>
+          <div class="dup-meta">
+            <span>Similarity {{ (m.similarity * 100)|round|int }}%</span>
+            <span>{{ (m.distance_km ~ ' km away') if m.distance_km is not none else 'distance unknown' }}</span>
+            <span>Submitted {{ m.created_at }}</span>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="mini-note ok" style="text-align:left">
+      Track your complaint anytime with <b>{{ report.tracking_id }}</b> on the
+      <a href="{{ url_for('complaints.track') }}" style="color:var(--emerald-700);font-weight:700">Track page</a>.
+      You will get a notification whenever the status changes.
+    </div>
+
+    <div class="hero-actions mt-3" style="justify-content:center">
+      <a class="btn btn-primary" href="{{ url_for('complaints.detail', report_id=report.id) }}">Open complaint</a>
+      {% if session.get('user_id') %}
+      <a class="btn btn-ghost" href="{{ url_for('complaints.my_reports') }}">My complaints</a>
+      {% else %}
+      <a class="btn btn-ghost" href="{{ url_for('complaints.report') }}">Submit another</a>
+      {% endif %}
+    </div>
+  </div>
+</section>
 {% endblock %}

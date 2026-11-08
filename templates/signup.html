@@ -1,4 +1,33 @@
-{% extends "base.html" %}{% block title %}Sign Up | SmartWaste{% endblock %}
+{% extends "base.html" %}{% block title %}Create account · SmartWaste{% endblock %}
 {% block content %}
-<section class="login-page"><div class="login-card"><div class="login-logo">♻</div><span>SMARTWASTE ACCOUNT</span><h1>Create Account</h1><p>Sign up to access the website and track your reports.</p><form method="post"><label>Full Name<input name="name" required autocomplete="name"></label><label>Email<input type="email" name="email" required autocomplete="email"></label><label>Password<input type="password" name="password" required minlength="6" autocomplete="new-password"></label><label>Confirm Password<input type="password" name="confirm" required minlength="6" autocomplete="new-password"></label><button class="btn primary full">Sign Up →</button></form><small>Already have an account? <a href="{{ url_for('login') }}">Sign in</a></small></div></section>
+<section class="auth-page">
+  <div class="auth-card card">
+    <div class="auth-logo">♻</div>
+    <span class="eyebrow">Citizen registration</span>
+    <h1>Create your account</h1>
+    <p class="muted">Track every complaint you file, receive status notifications and rate resolutions.</p>
+
+    <form method="post" action="{{ url_for('auth.signup') }}" class="mt-3">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <label class="field">Full name
+        <input name="name" required minlength="2" maxlength="80" autocomplete="name" placeholder="Your name">
+      </label>
+      <label class="field">Email address
+        <input name="email" type="email" required autocomplete="email" placeholder="you@example.com">
+      </label>
+      <div class="field-row">
+        <label class="field">Password
+          <input name="password" type="password" required minlength="8" autocomplete="new-password" placeholder="Min 8 characters">
+        </label>
+        <label class="field">Confirm password
+          <input name="confirm" type="password" required minlength="8" autocomplete="new-password" placeholder="Repeat password">
+        </label>
+      </div>
+      <button class="btn btn-primary btn-block" type="submit">Create account →</button>
+    </form>
+
+    <p class="mt-3" style="text-align:center;font-size:14px">Already registered? <a href="{{ url_for('auth.login') }}" style="color:var(--emerald-700);font-weight:700">Sign in</a></p>
+    <small class="privacy-note">🔒 Passwords are stored as salted hashes; e-mails are unique per account.</small>
+  </div>
+</section>
 {% endblock %}

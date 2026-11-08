@@ -1,0 +1,109 @@
+{% extends "admin_base.html" %}
+{% block title %}Complaint queue{% endblock %}
+{% block crumb %}Complaints · Queue{% endblock %}
+{% block heading %}Complaint queue{% endblock %}
+
+{% block content %}
+<form class="card" method="get" action="{{ url_for('admin.complaints') }}">
+  <div class="filter-bar" style="border-bottom:none;border-radius:var(--radius)">
+    <div class="filter"><label for="cQ">Search</label>
+      <input id="search" name="q" placeholder="ID, text, citizen…" value="{{ filters.q }}" oninput="filterTable()"></div>
+    <div class="filter"><label for="statusFilter">Status</label>
+      <select id="statusFilter" name="status">
+        <option value="">All statuses</option>
+        {% for s in statuses %}<option value="{{ s }}" {{ 'selected' if filters.status == s }}>{{ s }}</option>{% endfor %}
+      </select></div>
+    <div class="filter"><label for="cCat">Category</label>
+      <select id="cCat" name="category">
+        <option value="">All categories</option>
+        {% for c in categories %}<option value="{{ c }}" {{ 'selected' if filters.category == c }}>{{ c }}</option>{% endfor %}
+      </select></div>
+    <div class="filter"><label for="cArea">Area</label>
+      <input id="cArea" name="area" list="cAreaList" placeholder="Any area" value="{{ filters.area }}">
+      <datalist id="cAreaList">{% for a in areas %}<option value="{{ a }}">{% endfor %}</datalist></div>
+    <div class="filter"><label for="cUrg">Urgency</label>
+      <select id="cUrg" name="urgency">
+        <option value="">Any</option>
+        {% for p in priorities %}<option value="{{ p }}" {{ 'selected' if filters.urgency == p }}>{{ p }}</option>{% endfor %}
+      </select></div>
+    <div class="filter"><label for="cStart">From</label>
+      <input type="date" id="cStart" name="start" value="{{ filters.start }}"></div>
+    <div class="filter"><label for="cEnd">To</label>
+      <input type="date" id="cEnd" name="end" value="{{ filters.end }}"></div>
+    <div class="filter"><label for="cReview">AI review</label>
+      <select id="cReview" name="needs_review">
+        <option value="">All</option>
+        <option value="1" {{ 'selected' if filters.needs_review }}>Needs review</option>
+      </select></div>
+    <div class="filter"><label for="cSort">Sort</label>
+      <select id="cSort" name="sort">
+        <option value="newest" {{ 'selected' if filters.sort == 'newest' }}>Newest</option>
+        <option value="oldest" {{ 'selected' if filters.sort == 'oldest' }}>Oldest</option>
+        <option value="priority" {{ 'selected' if filters.sort == 'priority' }}>By urgency</option>
+      </select></div>
+    <button class="btn btn-primary btn-sm" type="submit">Apply</button>
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('admin.export_complaints', start=filters.start, end=filters.end, category=filters.category, status=filters.status, area=filters.area, urgency=filters.urgency, q=filters.q, needs_review='1' if filters.needs_review else '', sort=filters.sort) }}">⤓ CSV</a>
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('admin.complaints') }}">Reset</a>
+  </div>
+</form>
+
+<div class="status-strip">
+  <span>Matching: <b>{{ total }}</b></span>
+  {% for s in statuses %}{% if counts.get(s) %}<span>{{ s }}: <b>{{ counts[s] }}</b></span>{% endif %}{% endfor %}
+  <span>AI review queue: <b>{{ needs_review_count }}</b></span>
+</div>
+
+<div class="card">
+  <div class="tab-row">
+    <button type="button" class="tab active" data-status="all" onclick="setFilterTab(this)">All <small>({{ total }})</small></button>
+    {% for s in statuses %}
+    <button type="button" class="tab" data-status="{{ s|status_class }}" data-value="{{ s }}" onclick="setFilterTab(this)">
+      {{ s }} <small>({{ counts.get(s, 0) }})</small></button>
+    {% endfor %}
+  </div>
+
+  <div class="table-toolbar">
+    <div><h3>{{ total }} complaint{{ 's' if total != 1 }}</h3>
+      <p>AI predictions, duplicate context and status control on every row.</p></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      {% if filters.needs_review %}<span class="badge badge-warn">AI review queue active</span>{% endif %}
+      <a class="chip-btn neutral" href="{{ url_for('admin.map_view') }}">View on map →</a>
+    </div>
+  </div>
+
+  <div class="table-scroll">
+    <table class="data" id="reportTable">
+      <thead>
+        <tr>
+          <th>Tracking</th><th>Location / citizen</th><th>Category</th><th>AI prediction</th>
+          <th>Priority</th><th>Status</th><th>Submitted</th><th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in reports %}
+        <tr data-status="{{ r.status|status_class }}">
+          <td class="mono nowrap">{{ r.tracking_id }}
+            {% if r.ai_needs_review %}<br><span class="badge badge-warn">review</span>{% endif %}</td>
+          <td><b>{{ r.location }}</b><br><small>{{ r.name|mask_name }} · {{ r.area or 'no area' }}</small></td>
+          <td class="nowrap">{{ r.waste_type }}
+            {% if r.ai_category and r.ai_category != r.waste_type %}
+            <br><small class="muted">AI says {{ r.ai_category }}</small>{% endif %}</td>
+          <td class="nowrap">{{ r.ai_urgency or '—' }}
+            {% if r.ai_confidence is not none %}
+            <br><small class="muted">{{ (r.ai_confidence * 100)|round|int }}% conf.</small>{% endif %}</td>
+          <td><span class="badge priority-{{ r.priority|lower }}">{{ r.priority }}</span></td>
+          <td><span class="badge status-{{ r.status|status_class }}">{{ r.status }}</span></td>
+          <td class="nowrap">{{ r.created_at|dt }}</td>
+          <td class="nowrap"><a class="chip-btn neutral" href="{{ url_for('admin.complaint_detail', report_id=r.id) }}">Manage →</a></td>
+        </tr>
+        {% else %}
+        <tr><td colspan="8" class="empty">No complaints match these filters.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <div class="empty-state" id="noMatch" style="display:none;margin:18px">
+      <h3>No visible rows</h3><p>Adjust the search text or status tab.</p>
+    </div>
+  </div>
+</div>
+{% endblock %}

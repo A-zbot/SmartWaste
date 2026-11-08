@@ -1,0 +1,314 @@
+{
+  "task": "urgency",
+  "label_column": "urgency",
+  "labels": [
+    "Low",
+    "Medium",
+    "High",
+    "Emergency"
+  ],
+  "n_samples": 800,
+  "n_labels": 4,
+  "label_distribution": {
+    "Medium": 311,
+    "Low": 221,
+    "High": 204,
+    "Emergency": 64
+  },
+  "trained_at": "2026-11-07T05:18:55+00:00",
+  "split": {
+    "test_size": 0.2,
+    "random_state": 42,
+    "stratified": true,
+    "n_train": 640,
+    "n_test": 160
+  },
+  "cross_validation": {
+    "folds": 5,
+    "scoring": "f1_macro"
+  },
+  "models": [
+    {
+      "name": "Logistic Regression",
+      "tie_break": 0,
+      "cv_f1_macro_mean": 0.9556,
+      "cv_f1_macro_std": 0.0297,
+      "test_metrics": {
+        "accuracy": 0.9812,
+        "f1_macro": 0.9852,
+        "precision_macro": 0.9885,
+        "recall_macro": 0.9825,
+        "per_class_f1": {
+          "Low": 0.9767,
+          "Medium": 0.9764,
+          "High": 0.9877,
+          "Emergency": 1.0
+        }
+      },
+      "fit_seconds": 1.81,
+      "parameters": {
+        "tfidf": {
+          "ngram_range": [
+            1,
+            2
+          ],
+          "min_df": 2,
+          "max_df": 0.95,
+          "sublinear_tf": true,
+          "max_features": 20000
+        },
+        "estimator": {
+          "C": 3.0,
+          "class_weight": "balanced",
+          "dual": false,
+          "fit_intercept": true,
+          "intercept_scaling": 1,
+          "l1_ratio": 0.0,
+          "max_iter": 2000,
+          "n_jobs": null,
+          "penalty": "deprecated",
+          "random_state": 42,
+          "solver": "lbfgs",
+          "tol": 0.0001,
+          "verbose": 0,
+          "warm_start": false,
+          "class": "LogisticRegression"
+        }
+      }
+    },
+    {
+      "name": "Random Forest",
+      "tie_break": 1,
+      "cv_f1_macro_mean": 0.8784,
+      "cv_f1_macro_std": 0.0262,
+      "test_metrics": {
+        "accuracy": 0.9313,
+        "f1_macro": 0.9374,
+        "precision_macro": 0.956,
+        "recall_macro": 0.9235,
+        "per_class_f1": {
+          "Low": 0.9302,
+          "Medium": 0.9242,
+          "High": 0.9351,
+          "Emergency": 0.96
+        }
+      },
+      "fit_seconds": 13.03,
+      "parameters": {
+        "tfidf": {
+          "ngram_range": [
+            1,
+            2
+          ],
+          "min_df": 2,
+          "max_df": 0.95,
+          "sublinear_tf": true,
+          "max_features": 20000
+        },
+        "estimator": {
+          "bootstrap": true,
+          "ccp_alpha": 0.0,
+          "class_weight": "balanced_subsample",
+          "criterion": "gini",
+          "max_depth": null,
+          "max_features": "sqrt",
+          "max_leaf_nodes": null,
+          "max_samples": null,
+          "min_impurity_decrease": 0.0,
+          "min_samples_leaf": 2,
+          "min_samples_split": 2,
+          "min_weight_fraction_leaf": 0.0,
+          "monotonic_cst": null,
+          "n_estimators": 400,
+          "n_jobs": -1,
+          "oob_score": false,
+          "random_state": 42,
+          "verbose": 0,
+          "warm_start": false,
+          "class": "RandomForestClassifier"
+        }
+      }
+    }
+  ],
+  "best_model": {
+    "name": "Logistic Regression",
+    "cv_f1_macro_mean": 0.9556,
+    "cv_f1_macro_std": 0.0297,
+    "test_metrics": {
+      "accuracy": 0.9812,
+      "f1_macro": 0.9852,
+      "precision_macro": 0.9885,
+      "recall_macro": 0.9825,
+      "per_class_f1": {
+        "Low": 0.9767,
+        "Medium": 0.9764,
+        "High": 0.9877,
+        "Emergency": 1.0
+      }
+    },
+    "selection_rule": "highest mean 5-fold CV F1-macro on the training partition"
+  },
+  "test_metrics": {
+    "accuracy": 0.9812,
+    "f1_macro": 0.9852,
+    "precision_macro": 0.9885,
+    "recall_macro": 0.9825,
+    "per_class_f1": {
+      "Low": 0.9767,
+      "Medium": 0.9764,
+      "High": 0.9877,
+      "Emergency": 1.0
+    }
+  },
+  "test_classification_report": {
+    "Low": {
+      "precision": 1.0,
+      "recall": 0.9545,
+      "f1-score": 0.9767,
+      "support": 44.0
+    },
+    "Medium": {
+      "precision": 0.9538,
+      "recall": 1.0,
+      "f1-score": 0.9764,
+      "support": 62.0
+    },
+    "High": {
+      "precision": 1.0,
+      "recall": 0.9756,
+      "f1-score": 0.9877,
+      "support": 41.0
+    },
+    "Emergency": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 13.0
+    },
+    "macro_avg": {
+      "precision": 0.9885,
+      "recall": 0.9825,
+      "f1-score": 0.9852,
+      "support": 160.0
+    },
+    "weighted_avg": {
+      "precision": 0.9821,
+      "recall": 0.9812,
+      "f1-score": 0.9813,
+      "support": 160.0
+    }
+  },
+  "test_confusion_matrix": [
+    [
+      42,
+      2,
+      0,
+      0
+    ],
+    [
+      0,
+      62,
+      0,
+      0
+    ],
+    [
+      0,
+      1,
+      40,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      13
+    ]
+  ],
+  "holdout": {
+    "rows": 80,
+    "metrics": {
+      "accuracy": 0.8625,
+      "f1_macro": 0.856,
+      "precision_macro": 0.8771,
+      "recall_macro": 0.8519,
+      "per_class_f1": {
+        "Low": 0.9362,
+        "Medium": 0.8462,
+        "High": 0.8182,
+        "Emergency": 0.8235
+      }
+    },
+    "classification_report": {
+      "Low": {
+        "precision": 1.0,
+        "recall": 0.88,
+        "f1-score": 0.9362,
+        "support": 25.0
+      },
+      "Medium": {
+        "precision": 0.7333,
+        "recall": 1.0,
+        "f1-score": 0.8462,
+        "support": 22.0
+      },
+      "High": {
+        "precision": 0.9,
+        "recall": 0.75,
+        "f1-score": 0.8182,
+        "support": 24.0
+      },
+      "Emergency": {
+        "precision": 0.875,
+        "recall": 0.7778,
+        "f1-score": 0.8235,
+        "support": 9.0
+      },
+      "macro_avg": {
+        "precision": 0.8771,
+        "recall": 0.8519,
+        "f1-score": 0.856,
+        "support": 80.0
+      },
+      "weighted_avg": {
+        "precision": 0.8826,
+        "recall": 0.8625,
+        "f1-score": 0.8633,
+        "support": 80.0
+      }
+    },
+    "confusion_matrix": [
+      [
+        22,
+        3,
+        0,
+        0
+      ],
+      [
+        0,
+        22,
+        0,
+        0
+      ],
+      [
+        0,
+        5,
+        18,
+        1
+      ],
+      [
+        0,
+        0,
+        2,
+        7
+      ]
+    ],
+    "note": "Independent hand-written evaluation set (synthetic, not produced by the training generator)."
+  },
+  "artifact": "urgency_pipeline.joblib",
+  "library_versions": {
+    "python": "3.14.7",
+    "scikit-learn": "1.9.1",
+    "pandas": "3.1.1",
+    "numpy": "2.5.3"
+  }
+}

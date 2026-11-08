@@ -1,0 +1,502 @@
+{
+  "task": "category",
+  "label_column": "category",
+  "labels": [
+    "Open Garbage",
+    "Plastic Waste",
+    "Food Waste",
+    "Construction Debris",
+    "E-Waste",
+    "Medical Waste",
+    "Drain & Sewer Waste",
+    "Street Sweeping"
+  ],
+  "n_samples": 800,
+  "n_labels": 8,
+  "label_distribution": {
+    "Open Garbage": 160,
+    "Street Sweeping": 120,
+    "Plastic Waste": 100,
+    "Food Waste": 100,
+    "Construction Debris": 90,
+    "Drain & Sewer Waste": 90,
+    "E-Waste": 70,
+    "Medical Waste": 70
+  },
+  "trained_at": "2026-11-07T05:18:39+00:00",
+  "split": {
+    "test_size": 0.2,
+    "random_state": 42,
+    "stratified": true,
+    "n_train": 640,
+    "n_test": 160
+  },
+  "cross_validation": {
+    "folds": 5,
+    "scoring": "f1_macro"
+  },
+  "models": [
+    {
+      "name": "Logistic Regression",
+      "tie_break": 0,
+      "cv_f1_macro_mean": 0.9455,
+      "cv_f1_macro_std": 0.0216,
+      "test_metrics": {
+        "accuracy": 0.9938,
+        "f1_macro": 0.9934,
+        "precision_macro": 0.994,
+        "recall_macro": 0.9931,
+        "per_class_f1": {
+          "Open Garbage": 1.0,
+          "Plastic Waste": 1.0,
+          "Food Waste": 0.9756,
+          "Construction Debris": 1.0,
+          "E-Waste": 1.0,
+          "Medical Waste": 1.0,
+          "Drain & Sewer Waste": 0.9714,
+          "Street Sweeping": 1.0
+        }
+      },
+      "fit_seconds": 6.03,
+      "parameters": {
+        "tfidf": {
+          "ngram_range": [
+            1,
+            2
+          ],
+          "min_df": 2,
+          "max_df": 0.95,
+          "sublinear_tf": true,
+          "max_features": 20000
+        },
+        "estimator": {
+          "C": 3.0,
+          "class_weight": "balanced",
+          "dual": false,
+          "fit_intercept": true,
+          "intercept_scaling": 1,
+          "l1_ratio": 0.0,
+          "max_iter": 2000,
+          "n_jobs": null,
+          "penalty": "deprecated",
+          "random_state": 42,
+          "solver": "lbfgs",
+          "tol": 0.0001,
+          "verbose": 0,
+          "warm_start": false,
+          "class": "LogisticRegression"
+        }
+      }
+    },
+    {
+      "name": "Random Forest",
+      "tie_break": 1,
+      "cv_f1_macro_mean": 0.9486,
+      "cv_f1_macro_std": 0.0149,
+      "test_metrics": {
+        "accuracy": 0.9688,
+        "f1_macro": 0.9649,
+        "precision_macro": 0.9741,
+        "recall_macro": 0.9593,
+        "per_class_f1": {
+          "Open Garbage": 0.9846,
+          "Plastic Waste": 1.0,
+          "Food Waste": 1.0,
+          "Construction Debris": 0.9412,
+          "E-Waste": 0.963,
+          "Medical Waste": 0.9231,
+          "Drain & Sewer Waste": 0.9474,
+          "Street Sweeping": 0.96
+        }
+      },
+      "fit_seconds": 13.48,
+      "parameters": {
+        "tfidf": {
+          "ngram_range": [
+            1,
+            2
+          ],
+          "min_df": 2,
+          "max_df": 0.95,
+          "sublinear_tf": true,
+          "max_features": 20000
+        },
+        "estimator": {
+          "bootstrap": true,
+          "ccp_alpha": 0.0,
+          "class_weight": "balanced_subsample",
+          "criterion": "gini",
+          "max_depth": null,
+          "max_features": "sqrt",
+          "max_leaf_nodes": null,
+          "max_samples": null,
+          "min_impurity_decrease": 0.0,
+          "min_samples_leaf": 2,
+          "min_samples_split": 2,
+          "min_weight_fraction_leaf": 0.0,
+          "monotonic_cst": null,
+          "n_estimators": 400,
+          "n_jobs": -1,
+          "oob_score": false,
+          "random_state": 42,
+          "verbose": 0,
+          "warm_start": false,
+          "class": "RandomForestClassifier"
+        }
+      }
+    }
+  ],
+  "best_model": {
+    "name": "Random Forest",
+    "cv_f1_macro_mean": 0.9486,
+    "cv_f1_macro_std": 0.0149,
+    "test_metrics": {
+      "accuracy": 0.9688,
+      "f1_macro": 0.9649,
+      "precision_macro": 0.9741,
+      "recall_macro": 0.9593,
+      "per_class_f1": {
+        "Open Garbage": 0.9846,
+        "Plastic Waste": 1.0,
+        "Food Waste": 1.0,
+        "Construction Debris": 0.9412,
+        "E-Waste": 0.963,
+        "Medical Waste": 0.9231,
+        "Drain & Sewer Waste": 0.9474,
+        "Street Sweeping": 0.96
+      }
+    },
+    "selection_rule": "highest mean 5-fold CV F1-macro on the training partition"
+  },
+  "test_metrics": {
+    "accuracy": 0.9688,
+    "f1_macro": 0.9649,
+    "precision_macro": 0.9741,
+    "recall_macro": 0.9593,
+    "per_class_f1": {
+      "Open Garbage": 0.9846,
+      "Plastic Waste": 1.0,
+      "Food Waste": 1.0,
+      "Construction Debris": 0.9412,
+      "E-Waste": 0.963,
+      "Medical Waste": 0.9231,
+      "Drain & Sewer Waste": 0.9474,
+      "Street Sweeping": 0.96
+    }
+  },
+  "test_classification_report": {
+    "Open Garbage": {
+      "precision": 0.9697,
+      "recall": 1.0,
+      "f1-score": 0.9846,
+      "support": 32.0
+    },
+    "Plastic Waste": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 20.0
+    },
+    "Food Waste": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 20.0
+    },
+    "Construction Debris": {
+      "precision": 1.0,
+      "recall": 0.8889,
+      "f1-score": 0.9412,
+      "support": 18.0
+    },
+    "E-Waste": {
+      "precision": 1.0,
+      "recall": 0.9286,
+      "f1-score": 0.963,
+      "support": 14.0
+    },
+    "Medical Waste": {
+      "precision": 1.0,
+      "recall": 0.8571,
+      "f1-score": 0.9231,
+      "support": 14.0
+    },
+    "Drain & Sewer Waste": {
+      "precision": 0.9,
+      "recall": 1.0,
+      "f1-score": 0.9474,
+      "support": 18.0
+    },
+    "Street Sweeping": {
+      "precision": 0.9231,
+      "recall": 1.0,
+      "f1-score": 0.96,
+      "support": 24.0
+    },
+    "macro_avg": {
+      "precision": 0.9741,
+      "recall": 0.9593,
+      "f1-score": 0.9649,
+      "support": 160.0
+    },
+    "weighted_avg": {
+      "precision": 0.9712,
+      "recall": 0.9688,
+      "f1-score": 0.9684,
+      "support": 160.0
+    }
+  },
+  "test_confusion_matrix": [
+    [
+      32,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      20,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      20,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      16,
+      0,
+      0,
+      1,
+      1
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      13,
+      0,
+      1,
+      0
+    ],
+    [
+      1,
+      0,
+      0,
+      0,
+      0,
+      12,
+      0,
+      1
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      18,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      24
+    ]
+  ],
+  "holdout": {
+    "rows": 80,
+    "metrics": {
+      "accuracy": 0.7875,
+      "f1_macro": 0.7907,
+      "precision_macro": 0.8348,
+      "recall_macro": 0.7877,
+      "per_class_f1": {
+        "Open Garbage": 0.7027,
+        "Plastic Waste": 0.7059,
+        "Food Waste": 0.6667,
+        "Construction Debris": 0.9412,
+        "E-Waste": 0.7143,
+        "Medical Waste": 0.7778,
+        "Drain & Sewer Waste": 0.9474,
+        "Street Sweeping": 0.8696
+      }
+    },
+    "classification_report": {
+      "Open Garbage": {
+        "precision": 0.619,
+        "recall": 0.8125,
+        "f1-score": 0.7027,
+        "support": 16.0
+      },
+      "Plastic Waste": {
+        "precision": 0.8571,
+        "recall": 0.6,
+        "f1-score": 0.7059,
+        "support": 10.0
+      },
+      "Food Waste": {
+        "precision": 1.0,
+        "recall": 0.5,
+        "f1-score": 0.6667,
+        "support": 10.0
+      },
+      "Construction Debris": {
+        "precision": 1.0,
+        "recall": 0.8889,
+        "f1-score": 0.9412,
+        "support": 9.0
+      },
+      "E-Waste": {
+        "precision": 0.8333,
+        "recall": 0.625,
+        "f1-score": 0.7143,
+        "support": 8.0
+      },
+      "Medical Waste": {
+        "precision": 0.7,
+        "recall": 0.875,
+        "f1-score": 0.7778,
+        "support": 8.0
+      },
+      "Drain & Sewer Waste": {
+        "precision": 0.9,
+        "recall": 1.0,
+        "f1-score": 0.9474,
+        "support": 9.0
+      },
+      "Street Sweeping": {
+        "precision": 0.7692,
+        "recall": 1.0,
+        "f1-score": 0.8696,
+        "support": 10.0
+      },
+      "macro_avg": {
+        "precision": 0.8348,
+        "recall": 0.7877,
+        "f1-score": 0.7907,
+        "support": 80.0
+      },
+      "weighted_avg": {
+        "precision": 0.8192,
+        "recall": 0.7875,
+        "f1-score": 0.7825,
+        "support": 80.0
+      }
+    },
+    "confusion_matrix": [
+      [
+        13,
+        1,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1
+      ],
+      [
+        2,
+        6,
+        0,
+        0,
+        1,
+        0,
+        1,
+        0
+      ],
+      [
+        4,
+        0,
+        5,
+        0,
+        0,
+        1,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        8,
+        0,
+        0,
+        0,
+        1
+      ],
+      [
+        1,
+        0,
+        0,
+        0,
+        5,
+        1,
+        0,
+        1
+      ],
+      [
+        1,
+        0,
+        0,
+        0,
+        0,
+        7,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        9,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        10
+      ]
+    ],
+    "note": "Independent hand-written evaluation set (synthetic, not produced by the training generator)."
+  },
+  "artifact": "category_pipeline.joblib",
+  "library_versions": {
+    "python": "3.14.7",
+    "scikit-learn": "1.9.1",
+    "pandas": "3.1.1",
+    "numpy": "2.5.3"
+  }
+}

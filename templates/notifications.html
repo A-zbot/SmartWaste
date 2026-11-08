@@ -1,0 +1,53 @@
+{% extends "base.html" %}{% block title %}Notifications · SmartWaste{% endblock %}
+{% block content %}
+<section class="page-hero">
+  <span class="eyebrow">Updates</span>
+  <h1>Notifications</h1>
+  <p>{{ unread }} unread of {{ rows|length }} recent update{{ 's' if rows|length != 1 else '' }}.</p>
+</section>
+
+<section class="section" style="padding-top:28px">
+  <div class="card card-pad" style="max-width:880px;margin:0 auto">
+    <div class="card-head" style="padding:0 0 14px">
+      <div><h3>Activity on your complaints</h3><p>Status transitions, remarks and resolutions.</p></div>
+      {% if unread %}
+      <form method="post" action="{{ url_for('complaints.mark_notifications_read') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="btn btn-ghost btn-sm" type="submit">Mark all as read</button>
+      </form>
+      {% endif %}
+    </div>
+
+    {% if rows %}
+    <div class="notif-list">
+      {% for n in rows %}
+      <div class="notif {{ 'unread' if not n.is_read else '' }}">
+        <span class="notif-icon">{{ '●' if not n.is_read else '○' }}</span>
+        <div>
+          <b>{{ n.title }}</b>
+          <p>{{ n.message }}</p>
+          <span style="display:inline-flex;gap:8px;align-items:center;margin-top:8px">
+            {% if n.link %}<a class="chip-btn neutral" href="{{ n.link }}">Open complaint</a>{% endif %}
+            {% if not n.is_read %}
+            <form method="post" action="{{ url_for('complaints.mark_notifications_read') }}" style="display:inline">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <input type="hidden" name="id" value="{{ n.id }}">
+              <button class="chip-btn neutral" type="submit">Mark read</button>
+            </form>
+            {% endif %}
+          </span>
+        </div>
+        <span class="notif-time">{{ n.created_at|dt }}</span>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+      <h3>No notifications</h3>
+      <p>You will see an update here whenever the status of one of your complaints changes.</p>
+      <a class="btn btn-primary" href="{{ url_for('complaints.report') }}">Report waste</a>
+    </div>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

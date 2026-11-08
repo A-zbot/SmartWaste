@@ -1,0 +1,32 @@
+{
+  "trained_at": "2026-11-07T05:18:17+00:00",
+  "datasets": {
+    "category": {
+      "path": "data\\complaints_training_dataset.csv",
+      "rows": 800,
+      "sha256": "0f2f131ca20d5e79ab496023ef84a0165814300fe34846c5b77be2194544bac0"
+    },
+    "urgency": {
+      "path": "data\\complaints_training_dataset.csv",
+      "rows": 800,
+      "sha256": "0f2f131ca20d5e79ab496023ef84a0165814300fe34846c5b77be2194544bac0"
+    },
+    "holdout": {
+      "path": "data\\complaints_holdout_handwritten.csv",
+      "rows": 80,
+      "sha256": "c1bc971f23891717222aaf7040d489377ec2d55afe7b6b73a78f6e24ab7ae861"
+    }
+  },
+  "artifacts": [
+    "category_pipeline.joblib",
+    "category_report.json",
+    "urgency_pipeline.joblib",
+    "urgency_report.json"
+  ],
+  "library_versions": {
+    "python": "3.14.7",
+    "scikit-learn": "1.9.1",
+    "pandas": "3.1.1",
+    "numpy": "2.5.3"
+  }
+}

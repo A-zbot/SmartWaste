@@ -1,0 +1,199 @@
+{% extends "admin_base.html" %}
+{% block title %}Overview{% endblock %}
+{% block crumb %}Decision support · Overview{% endblock %}
+{% block heading %}Municipal overview{% endblock %}
+
+{% block content %}
+<form class="card" id="dashboardFilters" method="get" action="{{ url_for('admin.dashboard') }}">
+  <div class="filter-bar" style="border-bottom:none;border-radius:var(--radius)">
+    <div class="filter"><label for="fStart">From</label>
+      <input type="date" id="fStart" name="start" value="{{ filters.start }}"></div>
+    <div class="filter"><label for="fEnd">To</label>
+      <input type="date" id="fEnd" name="end" value="{{ filters.end }}"></div>
+    <div class="filter"><label for="fCategory">Category</label>
+      <select id="fCategory" name="category">
+        <option value="">All categories</option>
+        {% for c in categories %}<option value="{{ c }}" {{ 'selected' if filters.category == c }}>{{ c }}</option>{% endfor %}
+      </select></div>
+    <div class="filter"><label for="statusFilter">Status</label>
+      <select id="statusFilter" name="status">
+        <option value="">All statuses</option>
+        {% for s in statuses %}<option value="{{ s }}" {{ 'selected' if filters.status == s }}>{{ s }}</option>{% endfor %}
+      </select></div>
+    <div class="filter"><label for="fArea">Area</label>
+      <input id="fArea" name="area" list="areaList" placeholder="Any area" value="{{ filters.area }}">
+      <datalist id="areaList">{% for a in areas %}<option value="{{ a }}">{% endfor %}</datalist></div>
+    <div class="filter"><label for="fUrgency">Urgency</label>
+      <select id="fUrgency" name="urgency">
+        <option value="">Any</option>
+        {% for p in ['Low','Medium','High','Emergency'] %}<option value="{{ p }}" {{ 'selected' if filters.urgency == p }}>{{ p }}</option>{% endfor %}
+      </select></div>
+    <div class="filter"><label for="fReview">AI review queue</label>
+      <select id="fReview" name="needs_review">
+        <option value="">All complaints</option>
+        <option value="1" {{ 'selected' if filters.needs_review }}>Needs review only</option>
+      </select></div>
+    <div class="filter"><label for="fSort">Sort</label>
+      <select id="fSort" name="sort">
+        <option value="newest" {{ 'selected' if filters.sort == 'newest' }}>Newest first</option>
+        <option value="oldest" {{ 'selected' if filters.sort == 'oldest' }}>Oldest first</option>
+        <option value="priority" {{ 'selected' if filters.sort == 'priority' }}>By AI urgency</option>
+      </select></div>
+    <button class="btn btn-primary btn-sm" type="submit">Apply filters</button>
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('admin.dashboard') }}">Reset</a>
+  </div>
+</form>
+
+<div class="kpi-grid" id="dashboardCharts">
+  <div class="kpi"><div class="kpi-label">Total complaints</div>
+    <div class="kpi-value" id="kpiTotal">{{ kpis.total }}</div><div class="kpi-sub">matching current filters</div></div>
+  <div class="kpi kpi-info"><div class="kpi-label">Open complaints</div>
+    <div class="kpi-value" id="kpiOpen">{{ kpis.open }}</div>
+    <div class="kpi-sub">avg resolution <span id="kpiAvgRes">{% if kpis.avg_resolution_hours is not none %}avg {{ kpis.avg_resolution_hours }} h across {{ kpis.resolved_with_timestamp }} resolved{% else %}no resolved complaints with timestamps yet{% endif %}</span></div></div>
+  <div class="kpi kpi-danger"><div class="kpi-label">Urgent &amp; open</div>
+    <div class="kpi-value" id="kpiUrgent">{{ kpis.urgent_open }}</div><div class="kpi-sub">High / Emergency priority</div></div>
+  <div class="kpi"><div class="kpi-label">Resolved</div>
+    <div class="kpi-value" id="kpiResolved">{{ kpis.resolved }}</div><div class="kpi-sub {{ 'good' if kpis.resolved }}">closed successfully</div></div>
+  <div class="kpi kpi-warn"><div class="kpi-label">Needs AI review</div>
+    <div class="kpi-value" id="kpiReview">{{ kpis.needs_review }}</div><div class="kpi-sub">confidence below threshold</div></div>
+  <div class="kpi kpi-info"><div class="kpi-label">Resolution rate</div>
+    <div class="kpi-value"><span id="kpiResolution">{{ kpis.resolution_pct }}%</span></div>
+    <div class="kpi-sub">{{ kpis.closed_pct }}% closed incl. rejected</div></div>
+  <div class="kpi"><div class="kpi-label">Hotspot clusters</div>
+    <div class="kpi-value" id="kpiHotspots">{{ kpis.hotspots }}</div>
+    <div class="kpi-sub">DBSCAN · {{ kpis.hotspot_params.eps_meters if kpis.hotspot_params else default_eps or 400 }} m radius</div></div>
+  <div class="kpi kpi-warn"><div class="kpi-label">Recurring locations</div>
+    <div class="kpi-value" id="kpiRecurring">{{ kpis.recurring_locations }}</div>
+    <div class="kpi-sub">{{ kpis.complaints_in_clusters }} complaints inside clusters</div></div>
+</div>
+
+<div class="status-strip">
+  <span>Complaints in scope: <b>{{ kpis.total }}</b></span>
+  <span>Missing coordinates: <b>{{ kpis.missing_geo }}</b></span>
+  <span>Rejected: <b>{{ kpis.rejected }}</b></span>
+  <span>Unresolved inside clusters: <b>{{ kpis.unresolved_in_clusters }}</b></span>
+  <span>Contact messages: <b>{{ messages_total }}</b></span>
+  <span>Model: <b>{{ model_status.tasks.category.best_model or 'not trained' }}</b></span>
+</div>
+
+<div class="chart-grid">
+  <div class="chart-card" style="grid-column:span 2">
+    <div class="chart-head"><div><h4>Complaint volume (daily)</h4>
+      <p class="chart-sub">Zero-filled daily counts for the last 90 days, filtered</p></div></div>
+    <div class="chart-box tall"><canvas id="chartDaily"></canvas></div>
+  </div>
+  <div class="chart-card">
+    <div class="chart-head"><div><h4>By category</h4><p class="chart-sub">AI + citizen category mix</p></div></div>
+    <div class="chart-box"><canvas id="chartCategory"></canvas></div>
+  </div>
+  <div class="chart-card">
+    <div class="chart-head"><div><h4>By status</h4><p class="chart-sub">Current workflow state</p></div></div>
+    <div class="chart-box"><canvas id="chartStatus"></canvas></div>
+  </div>
+  <div class="chart-card">
+    <div class="chart-head"><div><h4>Top areas</h4><p class="chart-sub">Highest-volume locations</p></div></div>
+    <div class="chart-box"><canvas id="chartArea"></canvas></div>
+  </div>
+  <div class="chart-card">
+    <div class="chart-head"><div><h4>Urgency mix</h4><p class="chart-sub">AI urgency / citizen priority</p></div></div>
+    <div class="chart-box"><canvas id="chartUrgency"></canvas></div>
+  </div>
+  <div class="chart-card">
+    <div class="chart-head"><div><h4>Monthly trend</h4><p class="chart-sub">Last 12 months</p></div></div>
+    <div class="chart-box"><canvas id="chartMonthly"></canvas></div>
+  </div>
+</div>
+
+<div class="grid grid-2" style="align-items:start">
+  <div class="chart-card">
+    <div class="chart-head"><div><h4>Decision-support recommendations</h4>
+      <p class="chart-sub">Generated {{ recommendations.generated_at[:16].replace('T',' ') if recommendations.generated_at else '—' }} · from live data · {{ recommendations.total_reports }} complaint(s) analysed</p></div>
+      <a class="chip-btn neutral" href="{{ url_for('admin.complaints') }}">Open queue →</a></div>
+    <div class="rec-list" id="recList">
+      {% if recommendations['items'] %}
+        {% for r in recommendations['items'] %}
+        <div class="rec-item">
+          <div class="rec-severity {{ r.severity }}"></div>
+          <div class="rec-body">
+            <b>{{ r.title }}</b>
+            <p>{{ r.detail }}</p>
+            <div class="rec-action">{{ r.action }}</div>
+          </div>
+          <div class="rec-side"><b>{{ r.count }}</b><small>items</small></div>
+        </div>
+        {% endfor %}
+      {% elif recommendations.message %}
+        <div class="mini-note">{{ recommendations.message }}</div>
+      {% else %}
+        <div class="mini-note">No recommendations right now - the backlog is clear for the active filters.</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="chart-card">
+    <div class="chart-head"><div><h4>Model &amp; retraining status</h4>
+      <p class="chart-sub">{{ model_status.model_dir }}</p></div>
+      <a class="chip-btn neutral" href="{{ url_for('admin.models') }}">Evaluation →</a></div>
+    <div class="kv">
+      <dt>Category model</dt>
+      <dd>{% if model_status.tasks.category.trained %}
+        <span class="badge badge-ai">{{ model_status.tasks.category.best_model or 'trained' }}</span>
+        {{ model_status.tasks.category.n_samples or '?' }} samples
+        {% else %}<span class="badge badge-warn">not trained</span>{% endif %}</dd>
+      <dt>Urgency model</dt>
+      <dd>{% if model_status.tasks.urgency.trained %}
+        <span class="badge badge-ai">{{ model_status.tasks.urgency.best_model or 'trained' }}</span>
+        {{ model_status.tasks.urgency.n_samples or '?' }} samples
+        {% else %}<span class="badge badge-warn">not trained</span>{% endif %}</dd>
+      <dt>Retraining</dt>
+      <dd>{% if retrain.running %}<span class="badge badge-warn">training in progress…</span>
+        {% elif retrain.finished_at %}<span class="badge {{ 'badge-ai' if not retrain.error else 'badge-warn' }}">last run {{ retrain.finished_at[:19].replace('T',' ') }}</span>
+        {% else %}<span class="muted">not requested in this session</span>{% endif %}</dd>
+      <dt>Hotspot parameters</dt>
+      <dd>{% if kpis.hotspot_params %}eps {{ kpis.hotspot_params.eps_meters if kpis.hotspot_params.eps_meters is defined else '—' }} m · recomputed {{ kpis.hotspot_params.computed_at[:16].replace('T',' ') if kpis.hotspot_params.computed_at is defined and kpis.hotspot_params.computed_at else '—' }}
+        {% else %}<span class="muted">clustering has not run yet</span>{% endif %}</dd>
+    </div>
+    <form method="post" action="{{ url_for('admin.retrain') }}" class="mt-2">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button class="btn btn-ghost btn-block" type="submit" {{ 'disabled' if retrain.running }}>↻ Retrain models from dataset</button>
+    </form>
+  </div>
+</div>
+
+<div class="chart-card">
+  <div class="chart-head"><div><h4>Recent complaints</h4><p class="chart-sub">Newest {{ charts.recent|length }} records in scope</p></div>
+    <a class="chip-btn neutral" href="{{ url_for('admin.complaints') }}">All complaints →</a></div>
+  <div class="table-scroll">
+    <table class="data" id="reportTable">
+      <thead><tr>
+        <th>Tracking</th><th>Location</th><th>Category</th><th>AI urgency</th>
+        <th>Status</th><th>Submitted</th><th></th>
+      </tr></thead>
+      <tbody>
+        {% for r in charts.recent %}
+        <tr data-status="{{ r.status|status_class }}">
+          <td class="mono">{{ r.tracking_id }}</td>
+          <td>{{ r.location }}<br><small class="muted">{{ r.area or '' }}</small></td>
+          <td>{{ r.waste_type }}</td>
+          <td>{{ r.ai_urgency or r.priority }}
+            {% if r.ai_needs_review %}<span class="badge badge-warn">review</span>{% endif %}</td>
+          <td><span class="badge status-{{ r.status|status_class }}">{{ r.status }}</span></td>
+          <td class="nowrap">{{ r.created_at|dt }}</td>
+          <td class="nowrap"><a class="chip-btn neutral" href="{{ url_for('admin.complaint_detail', report_id=r.id) }}">Open →</a></td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7" class="muted" style="text-align:center;padding:26px">No complaints match the current filters.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script type="application/json" id="dashboardData">{
+  "charts": {{ charts|tojson }},
+  "kpis": {{ kpis|tojson }},
+  "recommendations": {{ recommendations['items']|tojson }}
+}</script>
+{% endblock %}

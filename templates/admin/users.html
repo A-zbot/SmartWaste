@@ -1,0 +1,65 @@
+{% extends "admin_base.html" %}
+{% block title %}Citizen accounts{% endblock %}
+{% block crumb %}System · Accounts{% endblock %}
+{% block heading %}Citizen accounts{% endblock %}
+
+{% block content %}
+<form class="card" method="get" action="{{ url_for('admin.users') }}">
+  <div class="filter-bar" style="border-bottom:none;border-radius:var(--radius)">
+    <div class="filter" style="flex:1 1 320px"><label for="uq">Search</label>
+      <input id="uq" name="q" placeholder="Name or e-mail…" value="{{ q }}"></div>
+    <button class="btn btn-primary btn-sm" type="submit">Search</button>
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('admin.users') }}">Reset</a>
+  </div>
+</form>
+
+<div class="status-strip">
+  <span>Accounts: <b>{{ users.total }}</b></span>
+  <span>Active: <b>{{ users.active }}</b></span>
+  <span>Disabled: <b>{{ users.total - users.active }}</b></span>
+</div>
+
+<div class="card">
+  <div class="table-toolbar">
+    <div><h3>{{ users.users|length }} account{{ 's' if users.users|length != 1 }}</h3>
+      <p>Disabling blocks sign-in; complaints and history are preserved.</p></div>
+  </div>
+  <div class="table-scroll">
+    <table class="data">
+      <thead>
+        <tr><th>#</th><th>Citizen</th><th>E-mail</th><th>Role</th>
+          <th class="num">Complaints</th><th class="num">Unread</th><th>Joined</th><th>Status</th><th></th></tr>
+      </thead>
+      <tbody>
+        {% for u in users.users %}
+        <tr>
+          <td class="mono">{{ u.id }}</td>
+          <td><b>{{ u.name }}</b></td>
+          <td>{{ u.email }}</td>
+          <td><span class="badge badge-neutral">{{ u.role }}</span></td>
+          <td class="num">{{ u.reports }}</td>
+          <td class="num">{{ u.unread }}</td>
+          <td class="nowrap">{{ u.created_at|dateonly }}</td>
+          <td>
+            {% if u.is_active %}<span class="badge status-resolved">Active</span>
+            {% else %}<span class="badge status-rejected">Disabled</span>{% endif %}
+          </td>
+          <td class="nowrap">
+            <form method="post" action="{{ url_for('admin.toggle_user', user_id=u.id) }}" style="display:inline">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <input type="hidden" name="q" value="{{ q }}">
+              <input type="hidden" name="active" value="{{ 0 if u.is_active else 1 }}">
+              <button class="chip-btn {{ 'neutral' if not u.is_active }}" type="submit"
+                onclick="return confirm('{{ 'Disable' if u.is_active else 'Enable' }} {{ u.name }}?')">
+                {{ 'Disable' if u.is_active else 'Enable' }}</button>
+            </form>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="9" class="empty">No accounts match this search.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

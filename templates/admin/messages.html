@@ -1,0 +1,38 @@
+{% extends "admin_base.html" %}
+{% block title %}Messages{% endblock %}
+{% block crumb %}Complaints · Messages{% endblock %}
+{% block heading %}Contact messages{% endblock %}
+
+{% block content %}
+<div class="status-strip">
+  <span>Stored messages: <b>{{ payload.total }}</b></span>
+  <span>Showing: <b>{{ payload.rows|length }}</b></span>
+</div>
+
+<div class="card">
+  <div class="table-toolbar">
+    <div><h3>Inbox</h3><p>Messages submitted through the public contact form.</p></div>
+    <a class="chip-btn neutral" href="{{ url_for('public.contact') }}">Open public form →</a>
+  </div>
+  <div class="table-scroll">
+    <table class="data">
+      <thead>
+        <tr><th>#</th><th>From</th><th>Subject</th><th>Message</th><th>Received</th></tr>
+      </thead>
+      <tbody>
+        {% for m in payload.rows %}
+        <tr>
+          <td class="mono">{{ m.id }}</td>
+          <td><b>{{ m.name }}</b><br><small>{{ m.email }}</small></td>
+          <td class="nowrap">{{ m.subject }}</td>
+          <td style="max-width:520px;white-space:pre-wrap">{{ m.message }}</td>
+          <td class="nowrap">{{ m.created_at|dt }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5" class="empty">No messages yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

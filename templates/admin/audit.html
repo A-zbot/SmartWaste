@@ -1,0 +1,50 @@
+{% extends "admin_base.html" %}
+{% block title %}Audit trail{% endblock %}
+{% block crumb %}System · Audit{% endblock %}
+{% block heading %}Audit trail{% endblock %}
+
+{% block content %}
+<form class="card" method="get" action="{{ url_for('admin.audit_log') }}">
+  <div class="filter-bar" style="border-bottom:none;border-radius:var(--radius)">
+    <div class="filter" style="flex:1 1 320px"><label for="aq">Filter by action</label>
+      <input id="aq" name="action" placeholder="e.g. complaint, auth, models…" value="{{ action }}"></div>
+    <button class="btn btn-primary btn-sm" type="submit">Filter</button>
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('admin.audit_log') }}">Reset</a>
+  </div>
+</form>
+
+<div class="status-strip">
+  <span>Total events: <b>{{ payload.total }}</b></span>
+  <span>Showing: <b>{{ payload.rows|length }}</b></span>
+  {% if action %}<span>Filter: <b>{{ action }}</b></span>{% endif %}
+</div>
+
+<div class="card">
+  <div class="table-toolbar">
+    <div><h3>Security &amp; operations log</h3>
+      <p>Logins, submissions, status changes, exports and model retraining - append-only.</p></div>
+  </div>
+  <div class="table-scroll">
+    <table class="data">
+      <thead>
+        <tr><th>#</th><th>When</th><th>Actor</th><th>Action</th><th>Entity</th><th>Detail</th><th>IP</th></tr>
+      </thead>
+      <tbody>
+        {% for row in payload.rows %}
+        <tr>
+          <td class="mono">{{ row.id }}</td>
+          <td class="nowrap">{{ row.created_at|dt }}</td>
+          <td class="nowrap">{{ row.actor_type }}{% if row.actor_label %}<br><small>{{ row.actor_label }}</small>{% endif %}</td>
+          <td class="mono nowrap">{{ row.action }}</td>
+          <td class="nowrap">{% if row.entity %}{{ row.entity }}{% if row.entity_id %}#{{ row.entity_id }}{% endif %}{% else %}—{% endif %}</td>
+          <td style="max-width:420px">{{ row.detail or '—' }}</td>
+          <td class="mono nowrap">{{ row.ip or '—' }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7" class="empty">No audit entries match this filter.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

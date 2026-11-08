@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="csrf-token" content="{{ csrf_token() }}">
+<title>{% block title %}Admin{% endblock %} · SmartWaste Console</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+{% block head %}{% endblock %}
+</head>
+<body>
+
+<div class="admin-shell">
+  <aside class="sidebar" id="sidebar">
+    <div class="side-brand">
+      <span class="brand-mark">♻</span>
+      <span><b>SmartWaste</b><small>Operations console</small></span>
+    </div>
+    <nav class="side-nav">
+      <span class="nav-section">Decision support</span>
+      <a href="{{ url_for('admin.dashboard') }}" class="{{ 'active' if request.endpoint == 'admin.dashboard' }}"><i>⌂</i> Overview</a>
+      <a href="{{ url_for('admin.analytics') }}" class="{{ 'active' if request.endpoint == 'admin.analytics' }}"><i>↗</i> Forecast &amp; trends</a>
+      <a href="{{ url_for('admin.map_view') }}" class="{{ 'active' if request.endpoint in ('admin.map_view', 'admin.recluster') }}"><i>◎</i> Hotspot map</a>
+      <span class="nav-section">Complaints</span>
+      <a href="{{ url_for('admin.complaints') }}" class="{{ 'active' if request.endpoint in ('admin.complaints', 'admin.complaint_detail') }}"><i>☷</i> Complaint queue</a>
+      <a href="{{ url_for('admin.messages') }}" class="{{ 'active' if request.endpoint == 'admin.messages' }}"><i>✉</i> Messages
+        {% if admin_messages %}<span class="count">{{ admin_messages }}</span>{% endif %}</a>
+      <span class="nav-section">System</span>
+      <a href="{{ url_for('admin.models') }}" class="{{ 'active' if request.endpoint in ('admin.models', 'admin.retrain') }}"><i>✦</i> Models &amp; evaluation</a>
+      <a href="{{ url_for('admin.users') }}" class="{{ 'active' if request.endpoint in ('admin.users', 'admin.toggle_user') }}"><i>♟</i> Citizen accounts</a>
+      <a href="{{ url_for('admin.audit_log') }}" class="{{ 'active' if request.endpoint == 'admin.audit_log' }}"><i>◷</i> Audit trail</a>
+    </nav>
+    <div class="side-foot">
+      <a href="{{ url_for('admin.export_complaints') }}">⤓ Export complaints (CSV)</a>
+      <a href="{{ url_for('public.home') }}">↩ View public site</a>
+      <a href="{{ url_for('auth.logout') }}">⏻ Logout</a>
+      <small style="display:block;margin-top:10px">AI · NLP · DBSCAN · Forecasting</small>
+    </div>
+  </aside>
+
+  <div class="admin-main">
+    <header class="admin-topbar">
+      <div style="display:flex;align-items:center;gap:12px;min-width:0">
+        <button class="admin-menu-btn" onclick="toggleSidebar()" aria-label="Toggle menu">☰</button>
+        <div style="min-width:0">
+          <div class="crumb">{% block crumb %}SmartWaste 2.0{% endblock %}</div>
+          <h1>{% block heading %}Operations console{% endblock %}</h1>
+        </div>
+      </div>
+      <div class="top-actions">
+        <a class="btn btn-ghost btn-sm" href="{{ url_for('admin.analytics') }}">Forecast</a>
+        <a class="btn btn-ghost btn-sm" href="{{ url_for('admin.map_view') }}">Map</a>
+        <a class="btn btn-ghost btn-sm" href="{{ url_for('admin.export_complaints') }}">⤓ CSV</a>
+        <a class="btn btn-dark btn-sm" href="{{ url_for('public.home') }}">Public site</a>
+      </div>
+    </header>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="flash-wrap" style="padding:14px 26px 0">
+          {% for category, msg in messages %}
+            <div class="flash {{ category }}">{{ msg }} <button onclick="this.parentElement.remove()" aria-label="Dismiss">×</button></div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    <div class="admin-body">
+      {% block content %}{% endblock %}
+    </div>
+  </div>
+</div>
+
+<script src="{{ url_for('static', filename='app.js') }}"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

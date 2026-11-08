@@ -1,0 +1,239 @@
+{% extends "base.html" %}{% block title %}{{ report.tracking_id }} · SmartWaste{% endblock %}
+{% from "_report_card.html" import status_badge, priority_badge, timeline %}
+{% block content %}
+<section class="page-hero">
+  <div style="display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;align-items:flex-end">
+    <div>
+      <span class="eyebrow">Complaint detail</span>
+      <h1>{{ report.tracking_id }}</h1>
+      <p>{{ report.location }} · submitted {{ report.created_at|dt }}</p>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      {{ status_badge(report.status) }}
+      {{ priority_badge(report.priority) }}
+      {% if report.ai_urgency %}<span class="badge badge-ai">AI urgency: {{ report.ai_urgency }}</span>{% endif %}
+      {% if report.ai_needs_review %}<span class="badge badge-warn">AI confidence low</span>{% endif %}
+    </div>
+  </div>
+</section>
+
+<section class="section" style="padding-top:26px">
+<div class="detail-grid" style="max-width:1180px;margin:0 auto">
+
+  {# ---------------- LEFT: status, description, history ---------------- #}
+  <div style="display:grid;gap:18px">
+    <div class="card">
+      <div class="card-head"><div><h3>Status timeline</h3><p>Every transition is recorded with an administrator note.</p></div></div>
+      <div class="detail-block">
+        {{ timeline(report.status) }}
+        {% if report.status == 'Rejected' and report.admin_remarks %}
+        <div class="mini-note danger mt-2"><b>Rejection reason:</b> {{ report.admin_remarks }}</div>
+        {% endif %}
+        <div class="tl-legend">
+          <span>Submitted {{ report.created_at|dt }}</span>
+          {% if report.resolved_at %}<span>Resolved {{ report.resolved_at|dt }}</span>
+          {% else %}<span>Open for {{ report.created_at|hours_since }} h</span>{% endif %}
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <div><h3>{{ report.waste_type }}</h3><p>Reported by {{ report.name }} · {{ report.mobile|mask_mobile if not can_manage else report.mobile }}</p></div>
+        <a class="btn btn-ghost btn-sm" href="{{ url_for('complaints.track', q=report.tracking_id) }}">Share tracking ID</a>
+      </div>
+      <div class="detail-block">
+        <h4>Description</h4>
+        <p style="font-size:14.5px;color:var(--ink-2);white-space:pre-wrap">{{ report.description }}</p>
+      </div>
+      {% if report.image or images %}
+      <div class="detail-block">
+        <h4>Evidence photos</h4>
+        <div style="display:flex;gap:14px;flex-wrap:wrap">
+          {% if report.image %}
+          <a href="{{ url_for('complaints.uploaded_file', filename=report.image) }}" target="_blank" rel="noopener">
+            <img class="thumb-lg" style="max-width:280px;height:180px" src="{{ url_for('complaints.uploaded_file', filename=report.image) }}" alt="Submitted photo"></a>
+          {% endif %}
+          {% for img in images if img.kind == 'resolution' %}
+          <div>
+            <a href="{{ url_for('complaints.uploaded_file', filename=img.filename) }}" target="_blank" rel="noopener">
+              <img class="thumb-lg" style="max-width:280px;height:180px" src="{{ url_for('complaints.uploaded_file', filename=img.filename) }}" alt="Resolution photo"></a>
+            <small class="muted">Resolution evidence · {{ img.created_at|dt }}</small>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+      {% if report.admin_remarks %}
+      <div class="detail-block">
+        <h4>Administrator remarks</h4>
+        <div class="mini-note">{{ report.admin_remarks }}</div>
+      </div>
+      {% endif %}
+    </div>
+
+    <div class="card">
+      <div class="card-head"><div><h3>Complaint history</h3><p>{{ history|length }} recorded event{{ 's' if history|length != 1 else '' }}</p></div></div>
+      <div class="detail-block">
+        <div class="history-list">
+          {% for h in history|reverse %}
+          <div class="history-item">
+            <span class="history-dot"></span>
+            <div>
+              <b>{{ h.new_status }}</b>
+              <small>{{ h.created_at|dt }} · by {{ h.actor_label or h.actor_type }}</small>
+              {% if h.remark %}<p>{{ h.remark }}</p>{% endif %}
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    {% if report.status == 'Resolved' %}
+    <div class="card">
+      <div class="card-head"><div><h3>Your feedback</h3><p>Rate how this complaint was handled.</p></div></div>
+      <div class="detail-block">
+        {% if feedback %}
+        <div class="mini-note ok">
+          You rated this complaint <b>{{ feedback.rating }}/5</b>
+          {% if feedback.comment %} - "{{ feedback.comment }}"{% endif %}
+          <span class="muted">on {{ feedback.created_at|dt }}</span>
+        </div>
+        {% else %}
+        <form method="post" action="{{ url_for('complaints.submit_feedback', report_id=report.id) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <label class="field">Rating
+            <select name="rating" required>
+              <option value="">Choose 1-5</option>
+              <option value="5">5 - Excellent</option>
+              <option value="4">4 - Good</option>
+              <option value="3">3 - Average</option>
+              <option value="2">2 - Poor</option>
+              <option value="1">1 - Very poor</option>
+            </select>
+          </label>
+          <label class="field">Comment (optional)
+            <textarea name="comment" maxlength="1000" style="min-height:90px" placeholder="What went well, or what could improve?"></textarea>
+          </label>
+          <button class="btn btn-primary" type="submit">Submit feedback</button>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  {# ---------------- RIGHT: AI panel, duplicates, context ---------------- #}
+  <div style="display:grid;gap:18px">
+    <div class="ai-panel">
+      <h4>AI analysis</h4>
+      <div class="ai-row"><span>Predicted category</span><b>{{ report.ai_category or 'unavailable' }}</b></div>
+      <div class="ai-row"><span>Model confidence</span><b>
+        {{ (report.ai_confidence * 100)|round|int if report.ai_confidence is not none else '—' }}%
+        {% if report.ai_confidence is not none %}
+        <span class="confidence-bar" style="display:block"><i style="width:{{ (report.ai_confidence * 100)|round|int }}%"></i></span>
+        {% endif %}
+      </b></div>
+      <div class="ai-row"><span>Predicted urgency</span><b>{{ report.ai_urgency or 'unavailable' }}</b></div>
+      <div class="ai-row"><span>Your declared priority</span><b>{{ report.priority }}</b></div>
+      <div class="ai-row"><span>Recommended action</span><b>{{ recommended_action }}</b></div>
+      <div class="ai-row"><span>Model</span><b style="font-size:12px">{{ explanation.model.category.name or '—' }}</b></div>
+      {% if report.ai_needs_review %}
+      <div class="mini-note warn mt-2" style="background:rgba(245,158,11,.15);border-color:rgba(245,158,11,.4);color:#FBD38D">
+        Confidence below threshold - an administrator will manually verify this classification.
+      </div>
+      {% endif %}
+    </div>
+
+    {% if explanation.text_features and explanation.text_features.category_task.available %}
+    <div class="card card-pad">
+      <span class="eyebrow">Why this prediction (explainable AI)</span>
+      <p class="muted" style="font-size:12.5px;margin:8px 0 12px">{{ explanation.text_features.category_task.method_note }}</p>
+      <div class="feature-tags">
+        {% for f in explanation.text_features.category_task.features %}
+        <span class="feature-tag {{ f.direction }}">{{ f.term }} <em>{{ '%+.3f'|format(f.contribution) }}</em></span>
+        {% endfor %}
+      </div>
+      {% if explanation.context_factors %}
+      <div class="explain-list mt-3">
+        {% for factor in explanation.context_factors %}
+        <div class="explain-item"><b>{{ factor.label }}: {{ factor.value }}</b><small>{{ factor.detail }}</small></div>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    <div class="card card-pad">
+      <span class="eyebrow">Possible duplicates nearby</span>
+      {% if duplicates.matches %}
+      <p class="muted" style="font-size:12.5px;margin-top:8px">
+        {{ duplicates.match_count }} similar complaint(s) found among {{ duplicates.checked }}
+        recent reports ({{ duplicates.window_days }}-day window).
+      </p>
+      <div class="dup-list mt-2">
+        {% for m in duplicates.matches %}
+        <div class="dup-item {{ 'likely' if m.is_likely else '' }}">
+          <b>{{ m.tracking_id }}</b> · {{ m.category }} ·
+          <span class="badge status-{{ m.status|status_class }}">{{ m.status }}</span>
+          <div class="dup-meta">
+            <span>{{ (m.similarity * 100)|round|int }}% text similarity</span>
+            <span>{{ (m.distance_km ~ ' km') if m.distance_km is not none else 'distance unknown' }}</span>
+            <span>{{ m.created_at }}</span>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="muted" style="font-size:13px;margin-top:8px">No textually similar complaints within
+        {{ duplicates.thresholds.distance_km }} km in the last {{ duplicates.window_days }} days.</p>
+      {% endif %}
+      {% for w in duplicates.warnings %}<div class="mini-note warn mt-2" style="font-size:12px">{{ w }}</div>{% endfor %}
+    </div>
+
+    <div class="card card-pad">
+      <span class="eyebrow">Geographic context</span>
+      <div class="kv mt-2">
+        <dt>Coordinates</dt>
+        <dd>{% if report.latitude is not none %}{{ report.latitude }}, {{ report.longitude }}{% else %}<span class="muted">not captured</span>{% endif %}</dd>
+        <dt>Area label</dt>
+        <dd>{{ report.area or '—' }}</dd>
+        <dt>Hotspot</dt>
+        <dd>{% if cluster %}<span class="badge badge-ai">{{ cluster.label }}</span>
+          {{ cluster.complaint_count }} complaints in this cluster ({{ cluster.unresolved_count }} open)
+          {% else %}<span class="muted">not inside a detected cluster</span>{% endif %}</dd>
+        <dt>Coordinates age</dt>
+        <dd>{% if report.created_at|hours_since is not none %}{{ report.created_at|hours_since }} hours since submission{% else %}—{% endif %}</dd>
+      </div>
+      {% if cluster %}
+      <a class="chip-btn mt-2" href="{{ url_for('admin.map_view') if session.get('admin') else url_for('public.home') }}">
+        {{ 'View hotspot on map →' if session.get('admin') else 'Hotspot detected by DBSCAN' }}</a>
+      {% endif %}
+    </div>
+
+    {% if can_manage %}
+    <div class="card card-pad">
+      <span class="eyebrow">Administrator actions</span>
+      <form method="post" action="{{ url_for('admin.update_status', report_id=report.id) }}" enctype="multipart/form-data" class="mt-2">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <label class="field">New status
+          <select name="status" required>
+            {% for s in statuses %}<option value="{{ s }}" {{ 'selected' if s == report.status }}>{{ s }}</option>{% endfor %}
+          </select>
+        </label>
+        <label class="field">Remark for the citizen
+          <textarea name="remark" maxlength="1000" style="min-height:80px" placeholder="e.g. Assigned to Zone 3 sanitation team, cleanup scheduled 6 PM.">{{ report.admin_remarks or '' }}</textarea>
+        </label>
+        <label class="field">Resolution evidence photo (optional)
+          <input type="file" name="resolution_image" accept="image/png,image/jpeg,image/webp">
+        </label>
+        <button class="btn btn-primary btn-block" type="submit">Save update</button>
+      </form>
+      <a class="btn btn-ghost btn-block mt-2" href="{{ url_for('admin.complaint_detail', report_id=report.id) }}">Open in admin console</a>
+    </div>
+    {% endif %}
+  </div>
+</div>
+</section>
+{% endblock %}

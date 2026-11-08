@@ -1,0 +1,15 @@
+{% extends "base.html" %}{% block title %}Error {{ code }} · SmartWaste{% endblock %}
+{% block content %}
+<section class="auth-page">
+  <div class="auth-card card" style="text-align:center">
+    <div class="auth-logo">{{ code }}</div>
+    <span class="eyebrow">Something went wrong</span>
+    <h1>{{ message }}</h1>
+    <p class="muted">Error code {{ code }}. Try again or head back to safety.</p>
+    <div class="hero-actions mt-3" style="justify-content:center">
+      <a class="btn btn-primary" href="{{ url_for('public.home') }}">Back to home</a>
+      <a class="btn btn-ghost" href="{{ url_for('complaints.report') }}">Report waste</a>
+    </div>
+  </div>
+</section>
+{% endblock %}

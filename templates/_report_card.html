@@ -1,28 +1,72 @@
-{% macro report_card(r, masked=false) %}
+{% macro status_badge(status) -%}
+<span class="badge status-{{ status|status_class }}"><span class="badge-dot"></span>{{ status }}</span>
+{%- endmacro %}
+
+{% macro priority_badge(priority) -%}
+<span class="badge priority-{{ priority|lower }}">{{ priority }}</span>
+{%- endmacro %}
+
+{% macro report_card(r, masked=false, show_ai=false) %}
 <article class="report-card">
   <div class="report-card-head">
     <div>
-      <span class="report-ref">REPORT #SW-{{ "%05d"|format(r.id) }}</span>
+      <span class="report-ref">{{ r.tracking_id or ('SW-' ~ '%05d'|format(r.id)) }}</span>
       <h3>{{ r.location }}</h3>
-      <p>{{ r.waste_type }} · {{ r.priority }} priority · Submitted {{ r.created_at }}</p>
+      <div class="meta">{{ r.waste_type }} · {{ status_badge(r.status) }} {{ priority_badge(r.priority) }}
+        {% if r.ai_urgency %}<span class="badge badge-ai">AI: {{ r.ai_urgency }}</span>{% endif %}
+        {% if r.ai_needs_review %}<span class="badge badge-warn">Needs review</span>{% endif %}
+      </div>
     </div>
-    <span class="status {{ r.status|lower|replace(' ','-') }}">{{ r.status }}</span>
+    {{ status_badge(r.status) }}
   </div>
-  <div class="rt-steps">
-    {% set s = r.status %}
-    <div class="rt-step done"><i>✓</i><span><b>Report Submitted</b><small>Received by SmartWaste</small></span></div>
-    <div class="rt-step {{ 'done' if s != 'Pending' else 'active' }}"><i>{{ '✓' if s != 'Pending' else '2' }}</i><span><b>In Progress</b><small>{{ 'Cleanup team dispatched' if s != 'Pending' else 'Awaiting team assignment' }}</small></span></div>
-    <div class="rt-step {{ 'done' if s == 'Resolved' else ('active' if s == 'In Progress' else 'todo') }}"><i>{{ '✓' if s == 'Resolved' else '3' }}</i><span><b>Resolved</b><small>{{ 'Area cleaned up' if s == 'Resolved' else 'Not completed yet' }}</small></span></div>
-  </div>
+
+  {{ timeline(r.status) }}
+
   <div class="report-card-body">
-    {% if r.image %}<a href="{{ url_for('uploaded_file', filename=r.image) }}" target="_blank"><img class="thumb-lg" src="{{ url_for('uploaded_file', filename=r.image) }}" alt="Report photo"></a>{% endif %}
+    {% if r.image %}<a href="{{ url_for('complaints.uploaded_file', filename=r.image) }}" target="_blank" rel="noopener">
+      <img class="thumb-lg" style="max-width:190px;height:120px" src="{{ url_for('complaints.uploaded_file', filename=r.image) }}" alt="Complaint photo"></a>{% endif %}
     <div class="report-card-text">
       <p class="report-desc">{{ r.description }}</p>
       <div class="report-meta">
         <span>👤 {{ (r.name|mask_name) if masked else r.name }}</span>
-        <span>☎ {{ (r.mobile|mask_mobile) if masked else r.mobile }}</span>
+        <span>📱 {{ (r.mobile|mask_mobile) if masked else r.mobile }}</span>
+        <span>🕒 {{ r.created_at|dt }}</span>
+        {% if r.area %}<span>📍 {{ r.area }}</span>{% endif %}
       </div>
     </div>
   </div>
+  <div class="card-footer-row">
+    <span>Reported {{ r.created_at|dt }}{% if r.resolved_at %} · Resolved {{ r.resolved_at|dt }}{% endif %}</span>
+    <span class="row-actions">
+      <a class="chip-btn neutral" href="{{ url_for('complaints.detail', report_id=r.id) }}">View details →</a>
+      {% if session.get('admin') %}
+      <a class="chip-btn" href="{{ url_for('admin.complaint_detail', report_id=r.id) }}">Admin view</a>
+      {% endif %}
+    </span>
+  </div>
 </article>
+{% endmacro %}
+
+{% macro timeline(status) %}
+{% set order = ['Submitted', 'Under Review', 'Assigned', 'In Progress', 'Resolved'] %}
+{% if status == 'Rejected' %}
+<div class="timeline" style="grid-template-columns:1fr">
+  <div class="tl-step rejected"><span class="tl-dot">✕</span><span><b>Rejected</b><small>This complaint was closed without action - see the administrator's remark for the reason.</small></span></div>
+</div>
+{% else %}
+{% set current = order.index(status) if status in order else 0 %}
+<div class="timeline">
+  {% for step in order %}
+    {% set cls = 'done' if loop.index0 < current else ('active' if loop.index0 == current else 'todo') %}
+    <div class="tl-step {{ cls }}">
+      <span class="tl-dot">{{ '✓' if cls == 'done' else loop.index }}</span>
+      <span><b>{{ step }}</b><small>
+        {%- if cls == 'done' %}Completed
+        {%- elif cls == 'active' %}Current status
+        {%- else %}Pending{%- endif -%}
+      </small></span>
+    </div>
+  {% endfor %}
+</div>
+{% endif %}
 {% endmacro %}

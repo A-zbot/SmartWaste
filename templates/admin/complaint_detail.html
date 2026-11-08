@@ -1,0 +1,222 @@
+{% extends "admin_base.html" %}
+{% from "_report_card.html" import status_badge, priority_badge, timeline %}
+{% block title %}{{ report.tracking_id }} · Admin{% endblock %}
+{% block crumb %}Complaints · {{ report.tracking_id }}{% endblock %}
+{% block heading %}{{ report.tracking_id }} — {{ report.waste_type }}{% endblock %}
+
+{% block content %}
+<div style="display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;align-items:center">
+  <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+    {{ status_badge(report.status) }}
+    {{ priority_badge(report.priority) }}
+    {% if report.ai_urgency %}<span class="badge badge-ai">AI: {{ report.ai_urgency }}</span>{% endif %}
+    {% if report.ai_needs_review %}<span class="badge badge-warn">Needs review</span>{% endif %}
+    <span class="muted" style="font-size:13px">submitted {{ report.created_at|dt }}{% if report.resolved_at %} · resolved {{ report.resolved_at|dt }}{% endif %}</span>
+  </div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <a class="chip-btn neutral" href="{{ url_for('complaints.detail', report_id=report.id) }}">Citizen view</a>
+    <a class="chip-btn neutral" href="{{ url_for('admin.map_view', area=report.area or '') }}">Map context</a>
+    <a class="chip-btn neutral" href="{{ url_for('admin.complaints') }}">← Queue</a>
+  </div>
+</div>
+
+<div class="detail-grid mt-3">
+  {# ---------------- left column ---------------- #}
+  <div style="display:grid;gap:18px">
+    <div class="card">
+      <div class="card-head"><div><h3>Status workflow</h3><p>Every transition is audited with your remark.</p></div></div>
+      <div class="detail-block">
+        {{ timeline(report.status) }}
+        {% if report.admin_remarks %}
+        <div class="mini-note mt-2"><b>Latest remark:</b> {{ report.admin_remarks }}</div>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <div><h3>{{ report.location }}</h3>
+          <p>{{ report.area or 'no area label' }}
+            {% if report.latitude is not none %} · {{ report.latitude }}, {{ report.longitude }}{% else %} · coordinates missing{% endif %}</p></div>
+        <span class="badge badge-neutral mono">{{ report.source }}</span>
+      </div>
+      <div class="detail-block">
+        <h4>Citizen description</h4>
+        <p style="font-size:14.5px;color:var(--ink-2);white-space:pre-wrap">{{ report.description }}</p>
+        <div class="report-meta mt-2">
+          <span>👤 {{ report.name }}</span>
+          <span>📱 {{ report.mobile }}</span>
+          <span>🗓 {{ report.created_at|dt }}</span>
+        </div>
+      </div>
+      {% if report.image or images %}
+      <div class="detail-block">
+        <h4>Photos</h4>
+        <div style="display:flex;gap:14px;flex-wrap:wrap">
+          {% if report.image %}
+          <a href="{{ url_for('complaints.uploaded_file', filename=report.image) }}" target="_blank" rel="noopener">
+            <img class="thumb-lg" style="max-width:230px;height:150px" src="{{ url_for('complaints.uploaded_file', filename=report.image) }}" alt="Submission photo"></a>
+          {% endif %}
+          {% for img in images if img.kind == 'resolution' %}
+          <div>
+            <a href="{{ url_for('complaints.uploaded_file', filename=img.filename) }}" target="_blank" rel="noopener">
+              <img class="thumb-lg" style="max-width:230px;height:150px" src="{{ url_for('complaints.uploaded_file', filename=img.filename) }}" alt="Resolution photo"></a>
+            <small class="muted">Resolution · {{ img.created_at|dt }}</small>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+      <div class="detail-block">
+        <h4>Complaint history ({{ history|length }})</h4>
+        <div class="history-list">
+          {% for h in history|reverse %}
+          <div class="history-item">
+            <span class="history-dot"></span>
+            <div>
+              <b>{{ h.old_status or '—' }} → {{ h.new_status }}</b>
+              <small>{{ h.created_at|dt }} · {{ h.actor_label or h.actor_type }}</small>
+              {% if h.remark %}<p>{{ h.remark }}</p>{% endif %}
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% if feedback %}
+      <div class="detail-block">
+        <h4>Citizen feedback</h4>
+        <div class="mini-note ok"><b>{{ feedback.rating }}/5</b>
+          {% if feedback.comment %}— "{{ feedback.comment }}"{% endif %}
+          <span class="muted">on {{ feedback.created_at|dt }}</span></div>
+      </div>
+      {% endif %}
+    </div>
+
+    <div class="card">
+      <div class="card-head"><div><h3>Update status</h3><p>Sends the citizen a notification automatically.</p></div></div>
+      <div class="detail-block">
+        <form method="post" action="{{ url_for('admin.update_status', report_id=report.id) }}" enctype="multipart/form-data">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <div class="field-row">
+            <label class="field">New status
+              <select name="status" required>
+                {% for s in statuses %}<option value="{{ s }}" {{ 'selected' if s == report.status }}>{{ s }}</option>{% endfor %}
+              </select>
+            </label>
+            <label class="field">Resolution evidence photo (optional)
+              <input type="file" name="resolution_image" accept="image/png,image/jpeg,image/webp">
+            </label>
+          </div>
+          <label class="field">Remark visible to the citizen
+            <textarea name="remark" maxlength="1000" style="min-height:90px"
+              placeholder="e.g. Assigned to Zone 3 team; cleanup scheduled 6 PM today.">{{ report.admin_remarks or '' }}</textarea>
+          </label>
+          <button class="btn btn-primary btn-block" type="submit">Save status update</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  {# ---------------- right column ---------------- #}
+  <div style="display:grid;gap:18px">
+    <div class="ai-panel">
+      <h4>AI prediction</h4>
+      <div class="ai-row"><span>Predicted category</span><b>{{ report.ai_category or 'unavailable' }}</b></div>
+      <div class="ai-row"><span>Predicted urgency</span><b>{{ report.ai_urgency or 'unavailable' }}</b></div>
+      <div class="ai-row"><span>Confidence</span><b>
+        {{ (report.ai_confidence * 100)|round|int if report.ai_confidence is not none else '—' }}%
+        {% if report.ai_confidence is not none %}
+        <span class="confidence-bar" style="display:block"><i style="width:{{ (report.ai_confidence * 100)|round|int }}%"></i></span>
+        {% endif %}</b></div>
+      <div class="ai-row"><span>Below threshold</span><b>{{ 'Yes - verify manually' if report.ai_needs_review else 'No' }}</b></div>
+      <div class="ai-row"><span>Model</span><b style="font-size:12px">{{ prediction.model_name if prediction else '—' }}</b></div>
+      <div class="ai-row"><span>Recommended action</span><b>{{ recommended_action }}</b></div>
+      <div class="ai-row"><span>Citizen vs AI</span><b>
+        {{ 'agree' if report.waste_type == report.ai_category else 'differ' }}</b></div>
+    </div>
+
+    {% if explanation.text_features and explanation.text_features.category_task.available %}
+    <div class="card card-pad">
+      <span class="eyebrow">Why the model predicted this</span>
+      <p class="muted" style="font-size:12.5px;margin:8px 0 12px">{{ explanation.text_features.category_task.method_note }}</p>
+      <div class="feature-tags">
+        {% for f in explanation.text_features.category_task.features %}
+        <span class="feature-tag {{ f.direction }}">{{ f.term }} <em>{{ '%+.3f'|format(f.contribution) }}</em></span>
+        {% endfor %}
+      </div>
+      {% if explanation.context_factors %}
+      <div class="explain-list mt-3">
+        {% for factor in explanation.context_factors %}
+        <div class="explain-item"><b>{{ factor.label }}: {{ factor.value }}</b><small>{{ factor.detail }}</small></div>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    <div class="card card-pad">
+      <span class="eyebrow">Possible duplicates</span>
+      {% if duplicates.matches %}
+      <p class="muted" style="font-size:12.5px;margin-top:8px">
+        {{ duplicates.match_count }} of {{ duplicates.checked }} recent complaints are textually similar
+        ({{ duplicates.window_days }}-day window, {{ duplicates.thresholds.distance_km }} km radius).</p>
+      <div class="dup-list mt-2">
+        {% for m in duplicates.matches %}
+        <div class="dup-item {{ 'likely' if m.is_likely else '' }}">
+          <b><a href="{{ url_for('admin.complaint_detail', report_id=m.report_id) }}">{{ m.tracking_id }}</a></b>
+          · {{ m.category }} · <span class="badge status-{{ m.status|status_class }}">{{ m.status }}</span>
+          <div class="dup-meta">
+            <span>{{ (m.similarity * 100)|round|int }}% similar</span>
+            <span>{{ (m.distance_km ~ ' km') if m.distance_km is not none else 'distance unknown' }}</span>
+            <span>score {{ m.score }}</span>
+            {% if m.is_likely %}<span><b>likely duplicate</b></span>{% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="muted" style="font-size:13px;margin-top:8px">No text-similar complaints found in the window.</p>
+      {% endif %}
+      {% for w in duplicates.warnings %}<div class="mini-note warn mt-2" style="font-size:12px">{{ w }}</div>{% endfor %}
+    </div>
+
+    <div class="card card-pad">
+      <span class="eyebrow">Geographic context</span>
+      <div class="kv mt-2">
+        <dt>Coordinates</dt>
+        <dd>{% if report.latitude is not none %}<span class="mono">{{ report.latitude }}, {{ report.longitude }}</span>
+          {% else %}<span class="muted">not captured - excluded from clustering</span>{% endif %}</dd>
+        <dt>Area</dt><dd>{{ report.area or '—' }}</dd>
+        <dt>Hotspot</dt>
+        <dd>{% if cluster %}
+          <span class="badge badge-ai">{{ cluster.label }}</span>
+          {{ cluster.complaint_count }} complaints ({{ cluster.unresolved_count }} open) · top: {{ cluster.top_category }}
+          {% else %}<span class="muted">outside any stored DBSCAN cluster</span>{% endif %}</dd>
+        <dt>Age</dt>
+        <dd>{{ report.created_at|hours_since }} h since submission</dd>
+      </div>
+      {% if cluster %}
+      <a class="chip-btn mt-2" href="{{ url_for('admin.map_view') }}">Show cluster on map →</a>
+      {% endif %}
+    </div>
+
+    <div class="card card-pad">
+      <span class="eyebrow">Citizen</span>
+      <div class="kv mt-2">
+        <dt>Name</dt><dd>{{ report.name }}</dd>
+        <dt>Mobile</dt><dd>{{ report.mobile }}</dd>
+        <dt>Account</dt>
+        <dd>{% if owner %}
+          <a href="{{ url_for('admin.users', q=owner.email) }}">{{ owner.name }} · {{ owner.email }}</a>
+          <small class="muted">joined {{ owner.created_at|dateonly }}</small>
+          {% else %}<span class="muted">anonymous submission (no account)</span>{% endif %}</dd>
+        <dt>Total by this citizen</dt>
+        <dd>{% if owner %}{{ owner.reports if owner.reports is defined else '—' }}{% else %}—{% endif %}</dd>
+      </div>
+      {% if report.user_id %}
+      <a class="chip-btn neutral mt-2" href="{{ url_for('admin.users', q='') }}">Manage accounts →</a>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

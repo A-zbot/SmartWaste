@@ -1,0 +1,105 @@
+{% extends "base.html" %}{% block title %}Profile · SmartWaste{% endblock %}
+{% block content %}
+<section class="page-hero">
+  <span class="eyebrow">My account</span>
+  <h1>{{ user.name }}</h1>
+  <p>{{ user.email }} · member since {{ user.created_at|dateonly }}</p>
+</section>
+
+<section class="section" style="padding-top:26px">
+  <div class="kpi-grid container" style="max-width:1080px">
+    <div class="kpi"><div class="kpi-label">Complaints filed</div><div class="kpi-value">{{ stats.total }}</div><div class="kpi-sub">by this account</div></div>
+    <div class="kpi kpi-info"><div class="kpi-label">Open</div><div class="kpi-value">{{ stats.open }}</div><div class="kpi-sub">in progress</div></div>
+    <div class="kpi"><div class="kpi-label">Resolved</div><div class="kpi-value">{{ stats.resolved }}</div><div class="kpi-sub {{ 'good' if stats.resolved }}">closed</div></div>
+    <div class="kpi kpi-warn"><div class="kpi-label">AI flagged</div><div class="kpi-value">{{ stats.ai_flagged }}</div><div class="kpi-sub">low-confidence AI</div></div>
+  </div>
+
+  <div class="detail-grid mt-3" style="max-width:1080px;margin-left:auto;margin-right:auto">
+    <div style="display:grid;gap:18px">
+      <div class="card">
+        <div class="card-head"><div><h3>Recent notifications</h3><p>Status changes and administrator remarks.</p></div>
+          <a class="chip-btn neutral" href="{{ url_for('complaints.notifications') }}">View all</a></div>
+        <div class="detail-block">
+          {% if notifications %}
+          <div class="notif-list">
+            {% for n in notifications %}
+            <div class="notif {{ '' if n.is_read else 'unread' }}">
+              <div>
+                <b>{{ n.title }}</b>
+                <p>{{ n.message }}</p>
+                {% if n.link %}<a class="chip-btn neutral mt-1" href="{{ n.link }}">Open</a>{% endif %}
+              </div>
+              <span class="notif-time">{{ n.created_at|dt }}</span>
+            </div>
+            {% endfor %}
+          </div>
+          {% else %}
+          <p class="muted">No notifications yet.</p>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><div><h3>Feedback you gave</h3><p>Ratings on resolved complaints.</p></div></div>
+        <div class="detail-block">
+          {% if feedback_rows %}
+          <div class="history-list">
+            {% for f in feedback_rows %}
+            <div class="history-item">
+              <span class="history-dot"></span>
+              <div>
+                <b>{{ f.tracking_id }} · {{ f.rating }}/5</b>
+                <small>{{ f.location }} · {{ f.created_at|dt }}</small>
+                {% if f.comment %}<p>"{{ f.comment }}"</p>{% endif %}
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+          {% else %}
+          <p class="muted">No feedback submitted yet - resolved complaints invite a rating.</p>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <div style="display:grid;gap:18px">
+      <div class="card">
+        <div class="card-head"><div><h3>Account</h3><p>Profile details and security.</p></div></div>
+        <div class="detail-block">
+          <div class="kv">
+            <dt>Name</dt><dd>{{ user.name }}</dd>
+            <dt>Email</dt><dd>{{ user.email }}</dd>
+            <dt>Role</dt><dd>{{ user.role }}</dd>
+            <dt>Status</dt><dd>{{ 'Active' if user.is_active else 'Disabled' }}</dd>
+            <dt>Unread notifications</dt><dd>{{ unread }}</dd>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><div><h3>Change password</h3><p>Minimum 8 characters.</p></div></div>
+        <div class="detail-block">
+          <form method="post" action="{{ url_for('auth.change_password') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <label class="field">Current password
+              <input name="current_password" type="password" required autocomplete="current-password">
+            </label>
+            <div class="field-row">
+              <label class="field">New password
+                <input name="new_password" type="password" required minlength="8" autocomplete="new-password">
+              </label>
+              <label class="field">Confirm new password
+                <input name="confirm_password" type="password" required minlength="8" autocomplete="new-password">
+              </label>
+            </div>
+            <button class="btn btn-primary btn-block" type="submit">Update password</button>
+          </form>
+        </div>
+      </div>
+
+      <a class="btn btn-ghost btn-block" href="{{ url_for('complaints.my_reports') }}">My complaints →</a>
+      <a class="btn btn-ghost btn-block" href="{{ url_for('auth.logout') }}">Logout</a>
+    </div>
+  </div>
+</section>
+{% endblock %}
