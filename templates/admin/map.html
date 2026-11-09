@@ -59,8 +59,21 @@
           eps <b>{{ run_params.eps_meters }} m</b> · min-samples <b>{{ run_params.min_samples }}</b>
           · metric <b>{{ run_params.metric }}</b> · {{ run_params.points_with_coordinates }} geocoded points
           · {{ run_params.noise_points }} noise · {{ run_params.computed_at[:16].replace('T',' ') }}
+          {% if run_params.quality and run_params.quality.silhouette is not none %}
+            · silhouette <b>{{ run_params.quality.silhouette }}</b> (haversine)
+          {% endif %}
         {% else %}<b>clustering has not been run yet</b>{% endif %}.
       </p>
+      {% set quality = run_params.quality if run_params else none %}
+      <div class="kpi" style="margin-top:12px">
+        <div class="kpi-label">Cluster separation (silhouette)</div>
+        <div class="kpi-value">{% if quality and quality.silhouette is not none %}{{ quality.silhouette }}{% else %}—{% endif %}</div>
+        <div class="kpi-sub">
+          {% if quality and quality.silhouette is not none %}
+            haversine metric · {{ quality.scored_points }} clustered points · 1.0 = tight, 0 = overlapping
+          {% elif quality %}{{ quality.reason }}{% else %}run clustering to score separation{% endif %}
+        </div>
+      </div>
       <form method="post" action="{{ url_for('admin.recluster') }}" class="mt-2">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="field-row">

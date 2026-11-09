@@ -63,8 +63,8 @@ def _fetch_points(con):
 
 def run_clustering(eps_meters=None, min_samples=None, persist=True, con=None):
     """Cluster every geocoded complaint. Returns a JSON-safe summary."""
-    eps_meters = float(eps_meters or DBSCAN_EPS_METERS)
-    min_samples = int(min_samples or DBSCAN_MIN_SAMPLES)
+    eps_meters = DBSCAN_EPS_METERS if eps_meters is None else float(eps_meters)
+    min_samples = DBSCAN_MIN_SAMPLES if min_samples is None else int(min_samples)
     own_con = con is None
     if own_con:
         con = get_connection()
@@ -84,6 +84,7 @@ def run_clustering(eps_meters=None, min_samples=None, persist=True, con=None):
             "computed_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
             "insufficient": False,
             "notes": [],
+            "quality": None,
         }
 
         if len(points) < max(min_samples, 2):
@@ -109,6 +110,7 @@ def run_clustering(eps_meters=None, min_samples=None, persist=True, con=None):
         noise = int(np.sum(labels == -1))
         summary["noise_points"] = noise
         summary["clustered_points"] = int(len(labels) - noise)
+        summary["quality"] = _cluster_quality(coords, labels)
 
         grouped = {}
         for point, label in zip(points, labels):
@@ -161,6 +163,46 @@ def run_clustering(eps_meters=None, min_samples=None, persist=True, con=None):
             con.close()
 
 
+def _cluster_quality(coords, labels):
+    """Silhouette coefficient of the clustered (non-noise) points.
+
+    Computed with the same haversine metric DBSCAN used, so the value
+    describes the separation of the clusters the system actually stored.
+    Returns ``silhouette=None`` with an honest reason whenever the score is
+    not computable (fewer than two clusters, too few points).
+    """
+    from sklearn.metrics import silhouette_score
+
+    mask = labels != -1
+    scored_labels = labels[mask]
+    n_points = int(len(scored_labels))
+    n_clusters = len(set(int(label) for label in scored_labels))
+    if n_points < 3 or n_clusters < 2:
+        return {
+            "silhouette": None,
+            "scored_points": n_points,
+            "n_clusters": n_clusters,
+            "metric": "haversine",
+            "reason": "Silhouette needs at least 2 clusters and 3 clustered points.",
+        }
+    if n_clusters >= n_points:
+        return {
+            "silhouette": None,
+            "scored_points": n_points,
+            "n_clusters": n_clusters,
+            "metric": "haversine",
+            "reason": "Not enough clustered points to score cluster separation.",
+        }
+    value = silhouette_score(coords[mask], scored_labels, metric="haversine")
+    return {
+        "silhouette": round(float(value), 4),
+        "scored_points": n_points,
+        "n_clusters": n_clusters,
+        "metric": "haversine",
+        "reason": None,
+    }
+
+
 def _persist(con, summary, clusters):
     """Replace stored clusters with the latest run (table = latest snapshot)."""
     params = {
@@ -173,6 +215,7 @@ def _persist(con, summary, clusters):
         "noise_points": summary["noise_points"],
         "computed_at": summary["computed_at"],
         "notes": summary["notes"],
+        "quality": summary.get("quality"),
     }
     con.execute("DELETE FROM complaint_clusters")
     for cluster in clusters:
@@ -248,5 +291,6 @@ def hotspot_stats():
             1 for c in clusters if c["complaint_count"] >= HOTSPOT_MIN_COMPLAINTS
         ),
         "parameters": params,
+        "quality": (params or {}).get("quality"),
         "recurring_threshold": HOTSPOT_MIN_COMPLAINTS,
     }

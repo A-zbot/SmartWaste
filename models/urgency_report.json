@@ -15,7 +15,7 @@
     "High": 204,
     "Emergency": 64
   },
-  "trained_at": "2026-11-07T05:18:55+00:00",
+  "trained_at": "2026-11-09T05:02:27+00:00",
   "split": {
     "test_size": 0.2,
     "random_state": 42,
@@ -45,7 +45,7 @@
           "Emergency": 1.0
         }
       },
-      "fit_seconds": 1.81,
+      "fit_seconds": 1.18,
       "parameters": {
         "tfidf": {
           "ngram_range": [
@@ -74,6 +74,18 @@
           "warm_start": false,
           "class": "LogisticRegression"
         }
+      },
+      "holdout_metrics": {
+        "accuracy": 0.8625,
+        "f1_macro": 0.856,
+        "precision_macro": 0.8771,
+        "recall_macro": 0.8519,
+        "per_class_f1": {
+          "Low": 0.9362,
+          "Medium": 0.8462,
+          "High": 0.8182,
+          "Emergency": 0.8235
+        }
       }
     },
     {
@@ -93,7 +105,7 @@
           "Emergency": 0.96
         }
       },
-      "fit_seconds": 13.03,
+      "fit_seconds": 8.95,
       "parameters": {
         "tfidf": {
           "ngram_range": [
@@ -126,6 +138,18 @@
           "verbose": 0,
           "warm_start": false,
           "class": "RandomForestClassifier"
+        }
+      },
+      "holdout_metrics": {
+        "accuracy": 0.5375,
+        "f1_macro": 0.5515,
+        "precision_macro": 0.7374,
+        "recall_macro": 0.5509,
+        "per_class_f1": {
+          "Low": 0.5294,
+          "Medium": 0.5526,
+          "High": 0.4571,
+          "Emergency": 0.6667
         }
       }
     }
@@ -302,7 +326,11 @@
         7
       ]
     ],
-    "note": "Independent hand-written evaluation set (synthetic, not produced by the training generator)."
+    "per_model_f1_macro": {
+      "Logistic Regression": 0.856,
+      "Random Forest": 0.5515
+    },
+    "note": "Independent hand-written evaluation set (synthetic, not produced by the training generator). Not used for model selection."
   },
   "artifact": "urgency_pipeline.joblib",
   "library_versions": {

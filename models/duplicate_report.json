@@ -1,0 +1,167 @@
+{
+  "available": true,
+  "generated_at": "2026-11-09T05:03:03+00:00",
+  "dataset": {
+    "path": "data/duplicate_pairs.csv",
+    "pairs": 500,
+    "positives": 250,
+    "negatives": 250,
+    "provenance": "Synthetic corpus with constructed pair labels and constructed coordinates - see data/duplicate_pairs.csv `construction` column and data/ANNOTATION.md. Measures the scoring rule on this corpus, not real-world accuracy."
+  },
+  "method": {
+    "text": "TF-IDF (1-2 grams, NLTK preprocessing) + cosine similarity",
+    "geographic": "haversine distance, 2.0 km hard gate, neutral 0.4 when unknown",
+    "category": "bonus 0.10 when both complaints share a category",
+    "weights": {
+      "text": 0.65,
+      "geographic": 0.25,
+      "category": 0.1
+    },
+    "text_gate_threshold": 0.45
+  },
+  "text_gate_only": {
+    "precision": 0.9957,
+    "recall": 0.932,
+    "f1": 0.9628,
+    "tp": 233,
+    "fp": 1,
+    "fn": 17,
+    "support_positives": 250,
+    "support_negatives": 250
+  },
+  "combined_rule": {
+    "precision": 1.0,
+    "recall": 0.932,
+    "f1": 0.9648,
+    "tp": 233,
+    "fp": 0,
+    "fn": 17,
+    "support_positives": 250,
+    "support_negatives": 250
+  },
+  "text_threshold_sweep": [
+    {
+      "threshold": 0.3,
+      "precision": 0.9802,
+      "recall": 0.988,
+      "f1": 0.9841,
+      "tp": 247,
+      "fp": 5,
+      "fn": 3,
+      "support_positives": 250,
+      "support_negatives": 250
+    },
+    {
+      "threshold": 0.35,
+      "precision": 0.9836,
+      "recall": 0.96,
+      "f1": 0.9717,
+      "tp": 240,
+      "fp": 4,
+      "fn": 10,
+      "support_positives": 250,
+      "support_negatives": 250
+    },
+    {
+      "threshold": 0.4,
+      "precision": 0.9873,
+      "recall": 0.936,
+      "f1": 0.961,
+      "tp": 234,
+      "fp": 3,
+      "fn": 16,
+      "support_positives": 250,
+      "support_negatives": 250
+    },
+    {
+      "threshold": 0.45,
+      "precision": 0.9957,
+      "recall": 0.932,
+      "f1": 0.9628,
+      "tp": 233,
+      "fp": 1,
+      "fn": 17,
+      "support_positives": 250,
+      "support_negatives": 250
+    },
+    {
+      "threshold": 0.5,
+      "precision": 1.0,
+      "recall": 0.928,
+      "f1": 0.9627,
+      "tp": 232,
+      "fp": 0,
+      "fn": 18,
+      "support_positives": 250,
+      "support_negatives": 250
+    },
+    {
+      "threshold": 0.55,
+      "precision": 1.0,
+      "recall": 0.912,
+      "f1": 0.954,
+      "tp": 228,
+      "fp": 0,
+      "fn": 22,
+      "support_positives": 250,
+      "support_negatives": 250
+    },
+    {
+      "threshold": 0.6,
+      "precision": 1.0,
+      "recall": 0.872,
+      "f1": 0.9316,
+      "tp": 218,
+      "fp": 0,
+      "fn": 32,
+      "support_positives": 250,
+      "support_negatives": 250
+    }
+  ],
+  "by_construction": {
+    "positive": {
+      "text_gate": {
+        "precision": 1.0,
+        "recall": 0.932,
+        "f1": 0.9648,
+        "tp": 233,
+        "fp": 0,
+        "fn": 17,
+        "support_positives": 250,
+        "support_negatives": 0
+      },
+      "combined": {
+        "precision": 1.0,
+        "recall": 0.932,
+        "f1": 0.9648,
+        "tp": 233,
+        "fp": 0,
+        "fn": 17,
+        "support_positives": 250,
+        "support_negatives": 0
+      }
+    },
+    "negative": {
+      "text_gate": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 1,
+        "fn": 0,
+        "support_positives": 0,
+        "support_negatives": 250
+      },
+      "combined": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "support_positives": 0,
+        "support_negatives": 250
+      }
+    }
+  }
+}

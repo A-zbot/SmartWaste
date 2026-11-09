@@ -247,11 +247,13 @@ def forecast(horizon=None, days=None):
         split_index = min_index + 1
         test_size = n - split_index
     test_indices = list(range(split_index, n))
-    y_true = [counts[t] for t in test_indices]
-
     seasonal_all, moving_all = _baseline_predictions(counts, test_indices)
-    seasonal_pred = [seasonal_all.get(t, counts[t]) for t in test_indices]
-    moving_pred = [moving_all.get(t, counts[t]) for t in test_indices]
+    # Keep only days both baselines can score (t >= 7) - never substitute an
+    # actual observation as if it were a prediction.
+    test_indices = [t for t in test_indices if t in seasonal_all and t in moving_all]
+    y_true = [counts[t] for t in test_indices]
+    seasonal_pred = [seasonal_all[t] for t in test_indices]
+    moving_pred = [moving_all[t] for t in test_indices]
 
     models = [
         {

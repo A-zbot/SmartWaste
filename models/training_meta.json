@@ -1,5 +1,5 @@
 {
-  "trained_at": "2026-11-07T05:18:17+00:00",
+  "trained_at": "2026-11-09T05:02:00+00:00",
   "datasets": {
     "category": {
       "path": "data\\complaints_training_dataset.csv",

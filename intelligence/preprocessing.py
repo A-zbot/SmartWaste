@@ -80,35 +80,34 @@ def _ensure_nltk():
         finally:
             socket.setdefaulttimeout(previous)
 
-    usable = True
+    stopwords_ok = True
     try:
         from nltk.corpus import stopwords as nltk_stopwords
         _stop_words = set(nltk_stopwords.words("english")) - _PRESERVED
-        usable = True
     except Exception:
         _stop_words = set(_FALLBACK_STOPWORDS) - _PRESERVED
-        usable = False
+        stopwords_ok = False
 
+    lemmatizer_ok = True
     try:
         from nltk.stem import WordNetLemmatizer
         WordNetLemmatizer().lemmatize("tests")
         _lemmatizer = WordNetLemmatizer()
-        usable = True
     except Exception:
         _lemmatizer = None
-        usable = False
+        lemmatizer_ok = False
 
+    tokenizer_ok = True
     try:
         from nltk.tokenize import word_tokenize
         word_tokenize("sanity check tokens")
         _word_tokenize = word_tokenize
-        usable = True
     except Exception:
         _word_tokenize = None
-        usable = False
+        tokenizer_ok = False
 
-    _nltk_ready = usable
-    return usable
+    _nltk_ready = stopwords_ok and lemmatizer_ok and tokenizer_ok
+    return _nltk_ready
 
 
 def nltk_available():

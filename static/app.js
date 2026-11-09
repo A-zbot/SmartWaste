@@ -210,8 +210,16 @@ function registerChart(key, chart) {
   window.__swCharts[key] = chart;
 }
 
+function chartsAvailable() {
+  if (typeof Chart === 'undefined') {
+    console.error('Chart.js is not loaded - admin charts cannot render.');
+    return false;
+  }
+  return true;
+}
+
 function renderDashboardCharts(data) {
-  if (!data || !data.charts) return;
+  if (!chartsAvailable() || !data || !data.charts) return;
   const c = data.charts;
 
   const daily = document.getElementById('chartDaily');
@@ -371,7 +379,7 @@ function escapeHtml(value) {
 /* ---------------- forecast chart ---------------- */
 function renderForecastChart(payload) {
   const canvas = document.getElementById('chartForecast');
-  if (!canvas || !payload) return;
+  if (!canvas || !payload || !chartsAvailable()) return;
   const history = payload.history || { dates: [], counts: [] };
   const fc = payload.forecast || { dates: [], values: [], lower: [], upper: [] };
   const labels = history.dates.concat(fc.dates || []);
@@ -418,7 +426,7 @@ function renderForecastChart(payload) {
 
 function renderBacktestChart(payload) {
   const canvas = document.getElementById('chartBacktest');
-  if (!canvas || !payload || !payload.models || !payload.models.length) return;
+  if (!canvas || !payload || !payload.models || !payload.models.length || !chartsAvailable()) return;
   const first = payload.models[0];
   const labels = (first.test_days || []).map((d) => d.slice(5));
   const datasets = payload.models.map((m, idx) => ({
@@ -519,7 +527,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const dash = document.getElementById('dashboardData');
   if (dash) {
-    try { renderDashboardCharts(JSON.parse(dash.textContent)); } catch (e) { /* noop */ }
+    try { renderDashboardCharts(JSON.parse(dash.textContent)); } catch (e) { console.error('dashboard charts failed', e); }
   }
   const fc = document.getElementById('forecastData');
   if (fc) {
@@ -527,7 +535,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const payload = JSON.parse(fc.textContent);
       renderForecastChart(payload);
       renderBacktestChart(payload);
-    } catch (e) { /* noop */ }
+    } catch (e) { console.error('forecast charts failed', e); }
   }
   initMap();
 

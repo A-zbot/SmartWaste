@@ -30,6 +30,58 @@ from intelligence.preprocessing import preprocess
 _W_TEXT, _W_GEO, _W_CATEGORY = 0.65, 0.25, 0.10
 
 
+def pair_similarity(text_a, text_b):
+    """TF-IDF cosine similarity between exactly two texts.
+
+    Uses the same vectoriser configuration as :func:`find_duplicates`
+    (1-2 grams, NLTK preprocessing, sublinear TF). Exposed separately so the
+    offline evaluation in ``experiments/evaluation.py`` scores pairs with the
+    identical method the live path uses.
+    """
+    try:
+        vectorizer = TfidfVectorizer(
+            preprocessor=preprocess,
+            ngram_range=(1, 2),
+            min_df=1,
+            sublinear_tf=True,
+            strip_accents="unicode",
+        )
+        matrix = vectorizer.fit_transform([text_a or "", text_b or ""])
+    except ValueError:
+        return 0.0
+    return float(linear_kernel(matrix[0:1], matrix[1:]).ravel()[0])
+
+
+def score_duplicate(similarity, distance_km=None, same_category=False):
+    """Apply the production decision rule to precomputed pair signals.
+
+    Returns ``None`` when the pair must be rejected (below the text gate, or
+    geographically too far), otherwise a dict with the combined ``score`` and
+    the ``is_likely`` verdict. Shared by the live query path and the offline
+    evaluation so both always agree on the rule.
+    """
+    if similarity is None or similarity < DUPLICATE_SIMILARITY_THRESHOLD:
+        return None
+    if distance_km is not None and distance_km > DUPLICATE_DISTANCE_KM:
+        return None  # geographically too far to be the same incident
+
+    if distance_km is None:
+        geo_score = 0.4  # neutral: proximity unknown
+    elif distance_km <= 1.0:
+        geo_score = 1.0
+    else:
+        geo_score = float(np.exp(-(distance_km - 1.0) / DUPLICATE_DISTANCE_KM))
+
+    category_bonus = 1.0 if same_category else 0.0
+    score = _W_TEXT * similarity + _W_GEO * geo_score + _W_CATEGORY * category_bonus
+    return {
+        "score": float(score),
+        "geo_score": geo_score,
+        "category_bonus": category_bonus,
+        "is_likely": float(score) >= DUPLICATE_COMBINED_THRESHOLD,
+    }
+
+
 def _fetch_candidates(con, exclude_report_id=None, window_days=None):
     window_days = window_days or DUPLICATE_WINDOW_DAYS
     sql = (
@@ -96,11 +148,9 @@ def find_duplicates(text, latitude=None, longitude=None, category=None,
     similarities = linear_kernel(matrix[0:1], matrix[1:]).ravel()
 
     matches = []
-    skipped_no_text = 0
+    missing_coords = 0
     for row, similarity in zip(candidates, similarities):
         similarity = float(similarity)
-        if similarity < DUPLICATE_SIMILARITY_THRESHOLD:
-            continue
 
         candidate_lat, candidate_lon = row["latitude"], row["longitude"]
         self_known = result["self_location_known"]
@@ -109,19 +159,13 @@ def find_duplicates(text, latitude=None, longitude=None, category=None,
         if self_known and other_known:
             distance = haversine_km(latitude, longitude, candidate_lat, candidate_lon)
 
-        if distance is not None and distance > DUPLICATE_DISTANCE_KM:
-            continue  # geographically too far to be the same incident
+        same_category = bool(category and row["waste_type"] == category)
+        verdict = score_duplicate(similarity, distance, same_category)
+        if verdict is None:
+            continue
 
         if distance is None:
-            skipped_no_text += 1
-            geo_score = 0.4  # neutral: proximity unknown
-        elif distance <= 1.0:
-            geo_score = 1.0
-        else:
-            geo_score = float(np.exp(-(distance - 1.0) / DUPLICATE_DISTANCE_KM))
-
-        category_bonus = 1.0 if (category and row["waste_type"] == category) else 0.0
-        score = _W_TEXT * similarity + _W_GEO * geo_score + _W_CATEGORY * category_bonus
+            missing_coords += 1
 
         matches.append({
             "report_id": row["id"],
@@ -133,9 +177,9 @@ def find_duplicates(text, latitude=None, longitude=None, category=None,
             "created_at": row["created_at"],
             "similarity": round(similarity, 4),
             "distance_km": round(distance, 3) if distance is not None else None,
-            "score": round(float(score), 4),
+            "score": round(verdict["score"], 4),
             "location_known": other_known,
-            "is_likely": float(score) >= DUPLICATE_COMBINED_THRESHOLD,
+            "is_likely": verdict["is_likely"],
         })
 
     matches.sort(key=lambda m: (-m["score"], m["report_id"]))
@@ -147,22 +191,10 @@ def find_duplicates(text, latitude=None, longitude=None, category=None,
         result["warnings"].append(
             "Report has no coordinates - geographic proximity could not be verified."
         )
-    if skipped_no_text:
+    if missing_coords:
         result["warnings"].append(
-            f"{skipped_no_text} text-similar complaint(s) skipped because "
-            "coordinates were missing on one side."
+            f"{missing_coords} text-similar complaint(s) matched without a distance "
+            "because coordinates were missing on one side; they are shown with a "
+            "neutral proximity score."
         )
     return result
-
-
-def nearby_similar_count(text, latitude, longitude, exclude_report_id=None):
-    """Number of text-similar complaints within the duplicate radius.
-
-    Used by decision support / explainability as a real database-derived
-    context factor (not a model input).
-    """
-    check = find_duplicates(
-        text, latitude=latitude, longitude=longitude,
-        exclude_report_id=exclude_report_id, limit=DUPLICATE_MAX_CANDIDATES,
-    )
-    return sum(1 for m in check["matches"] if m["distance_km"] is not None)

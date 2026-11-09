@@ -12,7 +12,7 @@
     <div>
       <span class="report-ref">{{ r.tracking_id or ('SW-' ~ '%05d'|format(r.id)) }}</span>
       <h3>{{ r.location }}</h3>
-      <div class="meta">{{ r.waste_type }} · {{ status_badge(r.status) }} {{ priority_badge(r.priority) }}
+      <div class="meta">{{ r.waste_type }} · {{ priority_badge(r.priority) }}
         {% if r.ai_urgency %}<span class="badge badge-ai">AI: {{ r.ai_urgency }}</span>{% endif %}
         {% if r.ai_needs_review %}<span class="badge badge-warn">Needs review</span>{% endif %}
       </div>

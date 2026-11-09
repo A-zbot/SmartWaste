@@ -1,8 +1,8 @@
 """Geospatial helpers (Module D).
 
-Coordinate validation, distance maths and construction of the payloads the
-Leaflet map consumes. Coordinates are only ever read from the database -
-locations are never invented.
+Coordinate validation, distance maths and location parsing. Coordinates are
+only ever read from the database - locations are never invented. Map payloads
+are assembled by the admin routes from these helpers plus the stored rows.
 """
 
 import math
@@ -67,58 +67,3 @@ def area_from_location(location_text):
         return None
     area = str(location_text).split(",")[0].strip()
     return area or None
-
-
-def marker_payload(report, include_ai=True):
-    payload = {
-        "id": report["id"],
-        "tracking_id": report["tracking_id"] or f"SW-{report['id']:05d}",
-        "lat": float(report["latitude"]),
-        "lng": float(report["longitude"]),
-        "location": report["location"],
-        "area": report["area"],
-        "category": report["waste_type"],
-        "status": report["status"],
-        "priority": report["priority"],
-        "urgency": report["ai_urgency"],
-        "created_at": report["created_at"],
-    }
-    if include_ai:
-        payload["ai_category"] = report["ai_category"]
-        payload["ai_confidence"] = report["ai_confidence"]
-        payload["needs_review"] = bool(report["ai_needs_review"])
-    return payload
-
-
-def cluster_payload(cluster, cluster_reports=None):
-    return {
-        "label": cluster["label"],
-        "lat": cluster["centroid_lat"],
-        "lng": cluster["centroid_lng"],
-        "count": cluster["complaint_count"],
-        "unresolved": cluster["unresolved_count"],
-        "top_category": cluster["top_category"],
-        "report_ids": cluster["report_ids"],
-        "computed_at": cluster["computed_at"],
-        "reports": cluster_reports or [],
-    }
-
-
-def nearest_cluster(lat, lon, clusters):
-    """Return (cluster, distance_km) of the closest stored cluster centroid."""
-    if not valid_coords(lat, lon) or not clusters:
-        return None, None
-    best, best_distance = None, None
-    for cluster in clusters:
-        distance = haversine_km(lat, lon, cluster["centroid_lat"], cluster["centroid_lng"])
-        if distance is None:
-            continue
-        if best_distance is None or distance < best_distance:
-            best, best_distance = cluster, distance
-    return best, best_distance
-
-
-def describe_filters(filters):
-    """Human-readable summary of active map filters (for audit log detail)."""
-    active = {k: v for k, v in (filters or {}).items() if v}
-    return ", ".join(f"{k}={v}" for k, v in active.items()) or "none"

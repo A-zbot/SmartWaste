@@ -69,6 +69,7 @@ def dashboard():
         messages_total=messages,
         categories=CATEGORIES,
         statuses=COMPLAINT_STATUSES,
+        default_eps=DBSCAN_EPS_METERS,
         retrain=_retrain,
     )
 
@@ -124,7 +125,9 @@ def _load_admin_report(report_id):
         owner = None
         if report["user_id"]:
             owner = con.execute(
-                "SELECT id, name, email, created_at FROM users WHERE id=?",
+                "SELECT u.id, u.name, u.email, u.created_at, "
+                "       (SELECT COUNT(*) FROM reports r WHERE r.user_id = u.id) AS reports "
+                "FROM users u WHERE u.id=?",
                 (report["user_id"],),
             ).fetchone()
         return report, images, history, prediction, feedback, {"con": con, "owner": owner}
@@ -317,14 +320,12 @@ def recluster():
 @admin_required
 def analytics():
     payload = forecasting_payload(request.args)
-    distributions = admin_services.chart_series(
-        admin_services.parse_filters(request.args), history_days=90
-    )
+    filters = admin_services.parse_filters(request.args)
+    distributions = admin_services.chart_series(filters, history_days=90)
     return render_template(
         "admin/forecast.html",
         forecast=payload,
         distributions=distributions,
-        filters=admin_services.parse_filters(request.args),
         categories=CATEGORIES,
         statuses=COMPLAINT_STATUSES,
     )

@@ -211,7 +211,7 @@
           <small class="muted">joined {{ owner.created_at|dateonly }}</small>
           {% else %}<span class="muted">anonymous submission (no account)</span>{% endif %}</dd>
         <dt>Total by this citizen</dt>
-        <dd>{% if owner %}{{ owner.reports if owner.reports is defined else '—' }}{% else %}—{% endif %}</dd>
+        <dd>{% if owner %}{{ owner.reports }} complaint{{ 's' if owner.reports != 1 else '' }}{% else %}—{% endif %}</dd>
       </div>
       {% if report.user_id %}
       <a class="chip-btn neutral mt-2" href="{{ url_for('admin.users', q='') }}">Manage accounts →</a>

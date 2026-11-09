@@ -6,7 +6,7 @@
 {% block content %}
 <form class="card" method="get" action="{{ url_for('admin.complaints') }}">
   <div class="filter-bar" style="border-bottom:none;border-radius:var(--radius)">
-    <div class="filter"><label for="cQ">Search</label>
+    <div class="filter"><label for="search">Search</label>
       <input id="search" name="q" placeholder="ID, text, citizen…" value="{{ filters.q }}" oninput="filterTable()"></div>
     <div class="filter"><label for="statusFilter">Status</label>
       <select id="statusFilter" name="status">

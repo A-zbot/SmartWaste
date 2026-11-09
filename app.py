@@ -112,16 +112,6 @@ def _register_template_helpers(app):
         """Pair two sequences (Jinja has no built-in zip filter)."""
         return list(zip(a or [], b or []))
 
-    @app.template_global
-    def status_progress(status, status_order=None):
-        """Index/percentage of the citizen status timeline for a complaint."""
-        order = status_order or config.STATUS_ORDER
-        if status == "Rejected":
-            return {"index": -1, "rejected": True}
-        if status in ("Resolved",):
-            return {"index": len(order), "rejected": False}
-        return {"index": order.get(status, 0), "rejected": False}
-
 
 # ---------------------------------------------------------------------------
 # Context processors

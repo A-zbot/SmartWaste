@@ -19,7 +19,6 @@ from config import (
     CATEGORIES,
     COMPLAINT_STATUSES,
     PRIORITIES,
-    STATUS_ORDER,
     UPLOAD_FOLDER,
 )
 from db import get_connection, loads
@@ -229,7 +228,6 @@ def my_reports():
         "my_reports.html",
         reports=reports,
         total=len(reports),
-        counts=counts,
         open_count=sum(counts[s] for s in COMPLAINT_STATUSES if s not in ("Resolved", "Rejected")),
         resolved=counts.get("Resolved", 0),
         unread=_unread(),
@@ -276,7 +274,6 @@ def detail(report_id):
             feedback=feedback,
             duplicates=duplicates,
             cluster=cluster,
-            status_order=STATUS_ORDER,
             statuses=COMPLAINT_STATUSES,
             recommended_action=recommend_action(
                 report_row["ai_category"] or report_row["waste_type"],

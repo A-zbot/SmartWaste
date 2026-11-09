@@ -12,11 +12,18 @@
 |---|---|---|
 | `complaints_training_dataset.csv` | 800 | Training + validation data, generated deterministically by `scripts/generate_dataset.py` (seed 42) |
 | `complaints_holdout_handwritten.csv` | 80 | Held-out evaluation set. Written from scratch with different phrasing so it is not assembled from the generator's fragment pools (still synthetic) |
+| `duplicate_pairs.csv` | 500 pairs | Labelled duplicate / not-duplicate pairs for Module C, built by `scripts/build_duplicate_pairs.py` (seed 42) from the two files above. Every row records how it was constructed in its `construction` column - see the provenance note in that script and `ANNOTATION.md` |
 
 Regenerate the training file at any time with:
 
 ```bash
 python scripts/generate_dataset.py
+```
+
+Rebuild the duplicate-pair evaluation set with:
+
+```bash
+python scripts/build_duplicate_pairs.py
 ```
 
 The script is deterministic (stdlib + `csv` only, no network) and asserts: no
@@ -107,10 +114,14 @@ describes dead bodies, infection or sewage entering homes).
 
 ```bash
 python scripts/train_models.py
+python experiments/evaluation.py
 ```
 
-This reads the labelled CSV(s) described above and (re)trains the category and
-urgency models used by the app.
+The first command reads the labelled CSV(s) described above and (re)trains the
+category and urgency models used by the app; the second refreshes every
+reported metric (`models/*_report.json`, `models/duplicate_report.json`,
+`experiments/RESULTS.md`). Label-acquisition and annotation procedure for
+future (real) data: `data/ANNOTATION.md`.
 
 ## Honest caveat about synthetic data
 

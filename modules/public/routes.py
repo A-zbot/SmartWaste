@@ -31,7 +31,7 @@ def _home_stats():
         "progress": row["progress"] or 0,
         "pending": row["pending"] or 0,
         "areas": areas or 0,
-        "ai_analysed": row["reviewed_by_ai"] or 0,
+        "needs_review": row["reviewed_by_ai"] or 0,
     }
 
 
