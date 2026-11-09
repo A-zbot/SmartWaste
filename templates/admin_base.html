@@ -9,6 +9,7 @@
 {% block head %}{% endblock %}
 </head>
 <body>
+<a class="skip-link" href="#main">Skip to main content</a>
 
 <div class="admin-shell">
   <aside class="sidebar" id="sidebar">
@@ -57,7 +58,7 @@
 
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
-        <div class="flash-wrap" style="padding:14px 26px 0">
+        <div class="flash-wrap" role="status" aria-live="polite" style="padding:14px 26px 0">
           {% for category, msg in messages %}
             <div class="flash {{ category }}">{{ msg }} <button onclick="this.parentElement.remove()" aria-label="Dismiss">×</button></div>
           {% endfor %}
@@ -65,7 +66,7 @@
       {% endif %}
     {% endwith %}
 
-    <div class="admin-body">
+    <div class="admin-body" id="main">
       {% block content %}{% endblock %}
     </div>
   </div>

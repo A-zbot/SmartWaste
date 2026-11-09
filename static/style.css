@@ -537,3 +537,30 @@ main{flex:1}
   .copyright{flex-direction:column}
   .flash-wrap{left:14px;right:14px;max-width:none;top:70px}
 }
+
+
+/* ---------------------------------------------------------------------------
+   Accessibility (Phase 5)
+   --------------------------------------------------------------------------- */
+.skip-link{
+  position:absolute;left:-9999px;top:0;z-index:300;
+  background:var(--forest-900);color:#fff;padding:11px 18px;
+  border-radius:0 0 10px 0;font-size:14px;font-weight:600;text-decoration:none;
+}
+.skip-link:focus{left:0}
+
+/* Visible keyboard focus everywhere (buttons already define their own). */
+a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,
+button:focus-visible,summary:focus-visible,[tabindex]:focus-visible{
+  outline:3px solid var(--emerald-100);outline-offset:2px;
+}
+
+/* Honour the OS "reduce motion" preference. */
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{
+    animation-duration:.01ms !important;
+    animation-iteration-count:1 !important;
+    transition-duration:.01ms !important;
+    scroll-behavior:auto !important;
+  }
+}
