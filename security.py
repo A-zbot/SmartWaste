@@ -65,7 +65,7 @@ def _verify_csrf_return():
     if result is None:
         return None
     message, status = result
-    if request.accept_mimetypes.best == "application/json":
+    if request.accept_mimetypes.best == "application/json" or request.is_json:
         return {"error": message}, status
     flash(message, "error")
     return redirect(request.referrer or url_for("public.home")), status

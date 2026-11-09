@@ -45,6 +45,7 @@ def create_app():
 
     init_db()
     install_security(app)
+    _install_security_headers(app)
     register_blueprints(app)
     _register_template_helpers(app)
     _register_context_processors(app)
@@ -52,6 +53,18 @@ def create_app():
     _log_startup_warnings(app)
     ensure_models_ready()
     return app
+
+
+def _install_security_headers(app):
+    """Baseline hardening headers on every response (never overrides a
+    response that already sets its own value)."""
+
+    @app.after_request
+    def _apply_security_headers(response):
+        response.headers.setdefault("X-Content-Type-Options", "nosniff")
+        response.headers.setdefault("X-Frame-Options", "SAMEORIGIN")
+        response.headers.setdefault("Referrer-Policy", "same-origin")
+        return response
 
 
 # ---------------------------------------------------------------------------
