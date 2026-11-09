@@ -8,9 +8,11 @@ continues normally, exactly like SmartWaste 1.x.
 import logging
 import smtplib
 import ssl
+from datetime import datetime, timezone
 from email.mime.image import MIMEImage
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from html import escape as html_escape
 
 from config import (
     REPORT_NOTIFY_EMAIL,
@@ -27,18 +29,34 @@ import os
 logger = logging.getLogger(__name__)
 
 
+def _smtp_ready():
+    return bool(SMTP_USER and SMTP_PASSWORD)
+
+
+def _deliver(msg):
+    """Send one prepared message; raises on transport failure (callers wrap)."""
+    context = ssl.create_default_context()
+    if SMTP_PORT == 465:
+        with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, timeout=15, context=context) as server:
+            server.login(SMTP_USER, SMTP_PASSWORD)
+            server.send_message(msg)
+    else:
+        with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=15) as server:
+            server.starttls(context=context)
+            server.login(SMTP_USER, SMTP_PASSWORD)
+            server.send_message(msg)
+
+
 def send_report_email(report_id, name, mobile, location, waste_type,
                       priority, description, filename, created_at=None):
-    from datetime import datetime
-
-    if not (SMTP_USER and SMTP_PASSWORD):
+    if not _smtp_ready():
         logger.info("SMTP_USER/SMTP_PASSWORD not set - skipping report email.")
         return False
     if not REPORT_NOTIFY_EMAIL:
         return False
 
     ref = f"SW-{report_id:05d}"
-    stamp = created_at or datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+    stamp = created_at or datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
 
     lines = [
         "A new waste complaint has been submitted on SmartWaste 2.0.",
@@ -88,15 +106,61 @@ def send_report_email(report_id, name, mobile, location, waste_type,
         attachment.add_header("Content-Disposition", "attachment", filename=filename)
         msg.attach(attachment)
 
-    context = ssl.create_default_context()
-    if SMTP_PORT == 465:
-        with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, timeout=15, context=context) as server:
-            server.login(SMTP_USER, SMTP_PASSWORD)
-            server.send_message(msg)
-    else:
-        with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=15) as server:
-            server.starttls(context=context)
-            server.login(SMTP_USER, SMTP_PASSWORD)
-            server.send_message(msg)
+    _deliver(msg)
     logger.info("Report #%s notification emailed to %s", report_id, REPORT_NOTIFY_EMAIL)
+    return True
+
+
+def send_status_email(to_email, report_id, tracking_id, name, old_status,
+                      new_status, remark=""):
+    """Best-effort citizen notification when an administrator changes status.
+
+    Returns False - never raises - when SMTP is unconfigured or there is no
+    recipient: the status change itself must never depend on e-mail delivery.
+    """
+    if not _smtp_ready():
+        logger.info("SMTP_USER/SMTP_PASSWORD not set - skipping status email.")
+        return False
+    to_email = (to_email or "").replace("\r", "").replace("\n", "").strip()
+    if not to_email:
+        return False
+
+    ref = tracking_id or f"SW-{report_id:05d}"
+    display_name = name or "there"
+    note = (remark or "").strip()
+
+    text_body = "\n".join([
+        "Hello " + display_name + ",",
+        "",
+        f"Your SmartWaste complaint {ref} has been updated.",
+        "",
+        f"Previous status: {old_status}",
+        f"Current status : {new_status}",
+        f"Updated at     : {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')} UTC",
+    ] + ([f"Administrator note: {note}"] if note else []) + [
+        "",
+        "Sign in to SmartWaste to view the full status timeline.",
+    ])
+
+    note_html = (f'<p style="margin:10px 0 0"><b>Administrator note:</b> '
+                 f'{html_escape(note)}</p>' if note else "")
+    html_body = f"""<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#1f2937">
+  <h2 style="margin:0 0 10px">Complaint <span style="color:#0e7a52">{html_escape(ref)}</span> updated</h2>
+  <p style="margin:0 0 12px">Hello {html_escape(display_name)}, the status of your waste complaint changed:</p>
+  <table cellpadding="6" style="border-collapse:collapse">
+    <tr><td><b>Previous status</b></td><td>{html_escape(str(old_status))}</td></tr>
+    <tr><td><b>Current status</b></td><td><b>{html_escape(str(new_status))}</b></td></tr>
+  </table>
+  {note_html}
+  <p style="color:#6b7280;font-size:12px;margin:14px 0 0">Sign in to SmartWaste to view the full status timeline.</p>
+</div>"""
+
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = f"[SmartWaste] {ref} is now {new_status}"
+    msg["From"] = SMTP_FROM
+    msg["To"] = to_email
+    msg.attach(MIMEText(text_body, "plain", "utf-8"))
+    msg.attach(MIMEText(html_body, "html", "utf-8"))
+    _deliver(msg)
+    logger.info("Status change for #%s emailed to %s", report_id, to_email)
     return True

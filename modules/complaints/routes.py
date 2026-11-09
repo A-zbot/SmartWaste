@@ -4,6 +4,7 @@ duplicate checks and notifications (Module A, with Modules B/C integration).
 
 from flask import (
     Blueprint,
+    Response,
     abort,
     flash,
     jsonify,
@@ -282,6 +283,37 @@ def detail(report_id):
             can_manage=session.get("admin") is True,
             unread=_unread(),
         )
+    finally:
+        con.close()
+
+
+@bp.route("/complaint/<int:report_id>/pdf")
+def report_pdf(report_id):
+    """Citizen PDF receipt - same access rules as the detail page."""
+    report_row, images, history, prediction, feedback, con = _load_report(report_id)
+    if report_row is None:
+        abort(404)
+    try:
+        if not _can_view(report_row, session.get("user_id"), session.get("admin") is True):
+            abort(403)
+        from modules.complaints.pdf_service import build_complaint_pdf
+
+        pdf = build_complaint_pdf(
+            report_row,
+            history=history,
+            prediction=prediction,
+            recommended_action=recommend_action(
+                report_row["ai_category"] or report_row["waste_type"],
+                report_row["ai_urgency"] or report_row["priority"],
+            ),
+            audience="citizen",
+        )
+        tracking = report_row["tracking_id"] or f"complaint-{report_id}"
+        response = Response(pdf, mimetype="application/pdf")
+        response.headers["Content-Disposition"] = (
+            f'attachment; filename="{tracking}-receipt.pdf"'
+        )
+        return response
     finally:
         con.close()
 

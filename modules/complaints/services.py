@@ -262,6 +262,16 @@ def _send_new_report_email(report_id, name, mobile, location, waste_type,
         logger.exception("Report #%s notification email failed", report_id)
 
 
+def _send_status_email(to_email, report_id, tracking_id, name, old_status,
+                       new_status, remark):
+    try:
+        from modules.complaints.email_service import send_status_email
+        send_status_email(to_email, report_id, tracking_id, name,
+                          old_status, new_status, remark)
+    except Exception:
+        logger.exception("Status-change email failed for report #%s", report_id)
+
+
 # ---------------------------------------------------------------------------
 # Status transitions (administrators)
 # ---------------------------------------------------------------------------
@@ -278,6 +288,14 @@ def update_status(report_id, new_status, remark="", actor_label="administrator",
         if row is None:
             return {"ok": False, "error": "Complaint not found."}
         old_status = row["status"]
+        status_changed = old_status != new_status
+        owner_email = None
+        if status_changed and row["user_id"]:
+            owner = con.execute(
+                "SELECT email FROM users WHERE id=? AND is_active=1",
+                (row["user_id"],),
+            ).fetchone()
+            owner_email = owner["email"] if owner else None
         now = utc_now()
         fields = ["status=?", "updated_at=?"]
         params = [new_status, now]
@@ -325,6 +343,14 @@ def update_status(report_id, new_status, remark="", actor_label="administrator",
                + (f" | {remark.strip()}" if remark else ""),
         actor_type="admin", actor_label=actor_label, ip=ip,
     )
+    # Best-effort citizen e-mail: never blocks or fails the status change.
+    if owner_email:
+        threading.Thread(
+            target=_send_status_email,
+            args=(owner_email, report_id, row["tracking_id"], row["name"],
+                  old_status, new_status, remark),
+            daemon=True,
+        ).start()
     return {"ok": True, "old_status": old_status, "new_status": new_status}
 
 

@@ -40,7 +40,10 @@
     <div class="card">
       <div class="card-head">
         <div><h3>{{ report.waste_type }}</h3><p>Reported by {{ report.name }} · {{ report.mobile|mask_mobile if not can_manage else report.mobile }}</p></div>
-        <a class="btn btn-ghost btn-sm" href="{{ url_for('complaints.track', q=report.tracking_id) }}">Share tracking ID</a>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <a class="btn btn-ghost btn-sm" href="{{ url_for('complaints.track', q=report.tracking_id) }}">Share tracking ID</a>
+          <a class="btn btn-ghost btn-sm" href="{{ url_for('complaints.report_pdf', report_id=report.id) }}">⤓ PDF receipt</a>
+        </div>
       </div>
       <div class="detail-block">
         <h4>Description</h4>

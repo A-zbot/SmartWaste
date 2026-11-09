@@ -42,6 +42,7 @@ from security import admin_required, audit
 from modules.admin import services as admin_services
 from modules.analytics.services import forecasting_payload, overview
 from modules.complaints import services as complaint_services
+from modules.complaints.pdf_service import build_complaint_pdf
 
 bp = Blueprint("admin", __name__)
 
@@ -439,3 +440,35 @@ def export_complaints():
     response = Response(csv_text, mimetype="text/csv; charset=utf-8")
     response.headers["Content-Disposition"] = f"attachment; filename={filename}"
     return response
+
+
+@bp.route("/admin/complaint/<int:report_id>/pdf")
+@admin_required
+def export_report_pdf(report_id):
+    """Full operational complaint report as PDF (server-side, reportlab)."""
+    report, images, history, prediction, feedback, extra = _load_admin_report(report_id)
+    if report is None:
+        abort(404)
+    con = extra["con"]
+    try:
+        pdf = build_complaint_pdf(
+            report,
+            history=history,
+            prediction=prediction,
+            recommended_action=recommend_action(
+                report["ai_category"] or report["waste_type"],
+                report["ai_urgency"] or report["priority"],
+            ),
+            audience="admin",
+        )
+        audit("reports.exported_pdf", entity="report", entity_id=report_id,
+              detail=report["tracking_id"] or "", actor_type="admin",
+              ip=request.remote_addr)
+        tracking = report["tracking_id"] or f"complaint-{report_id}"
+        response = Response(pdf, mimetype="application/pdf")
+        response.headers["Content-Disposition"] = (
+            f'attachment; filename="{tracking}-report.pdf"'
+        )
+        return response
+    finally:
+        con.close()
