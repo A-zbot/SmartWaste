@@ -20,7 +20,10 @@ Methodology (documented so the dashboard can show exactly what was done):
   instead of inventing a forecast.
 """
 
+import copy
 import math
+import threading
+import time
 from collections import defaultdict
 from datetime import date, datetime, timedelta, timezone
 
@@ -193,10 +196,51 @@ def _seasonal_baseline_forecast(dates, counts, horizon):
     }
 
 
+# The Random Forest refit on every page load is the dominant cost of this
+# module. Payloads are memoized for a short TTL, keyed by everything that can
+# change the answer (horizon, window, row count, day count, last day).
+FORECAST_CACHE_TTL = 120.0  # seconds
+
+_FORECAST_CACHE = {}
+_FORECAST_CACHE_LOCK = threading.Lock()
+
+
 def forecast(horizon=None, days=None):
-    """Full forecasting payload for the analytics page (JSON-safe)."""
+    """Full forecasting payload for the analytics page (JSON-safe).
+
+    Memoized for ``FORECAST_CACHE_TTL`` seconds; callers always receive a
+    private copy so mutations cannot leak into the cache.
+    """
     horizon = int(horizon or FORECAST_HORIZON_DAYS)
     series = daily_series(days=days)
+    signature = (
+        horizon,
+        days,
+        series["total"],
+        len(series["counts"]),
+        series["dates"][-1] if series["dates"] else "",
+    )
+    now = time.monotonic()
+    with _FORECAST_CACHE_LOCK:
+        hit = _FORECAST_CACHE.get(signature)
+    if hit is not None and now - hit[0] <= FORECAST_CACHE_TTL:
+        return copy.deepcopy(hit[1])
+
+    payload = _forecast_from_series(horizon, series)
+    with _FORECAST_CACHE_LOCK:
+        if len(_FORECAST_CACHE) >= 8:
+            _FORECAST_CACHE.clear()
+        _FORECAST_CACHE[signature] = (now, payload)
+    return copy.deepcopy(payload)
+
+
+def clear_forecast_cache():
+    with _FORECAST_CACHE_LOCK:
+        _FORECAST_CACHE.clear()
+
+
+def _forecast_from_series(horizon, series):
+    """Build the full payload from an already-fetched daily series."""
     dates, counts = series["dates"], series["counts"]
     n = len(counts)
 

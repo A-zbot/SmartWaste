@@ -199,6 +199,51 @@ def profile():
     )
 
 
+@bp.route("/profile/update", methods=["POST"])
+@citizen_required
+def update_profile():
+    user_id = session["user_id"]
+    name = request.form.get("name", "").strip()
+    email = request.form.get("email", "").strip().lower()
+
+    if len(name) < 2 or len(name) > 80:
+        flash("Please enter a valid name (2-80 characters).", "error")
+        return redirect(url_for("auth.profile"))
+    if not EMAIL_RE.match(email):
+        flash("Please enter a valid email address.", "error")
+        return redirect(url_for("auth.profile"))
+
+    con = get_connection()
+    try:
+        current = con.execute(
+            "SELECT email FROM users WHERE id=?", (user_id,)
+        ).fetchone()
+        if current is None:
+            session.clear()
+            flash("Your account no longer exists.", "error")
+            return redirect(url_for("auth.login"))
+        if email != current["email"]:
+            clash = con.execute(
+                "SELECT id FROM users WHERE email=? AND id!=?", (email, user_id)
+            ).fetchone()
+            if clash:
+                flash("An account with this email already exists.", "error")
+                return redirect(url_for("auth.profile"))
+        con.execute(
+            "UPDATE users SET name=?, email=?, updated_at=datetime('now') WHERE id=?",
+            (name, email, user_id),
+        )
+        con.commit()
+    finally:
+        con.close()
+
+    session["user_name"] = name
+    audit("auth.profile_updated", actor_type="citizen", actor_id=user_id,
+          actor_label=name, detail=f"email={email}", ip=request.remote_addr)
+    flash("Your profile has been updated.", "success")
+    return redirect(url_for("auth.profile"))
+
+
 @bp.route("/profile/password", methods=["POST"])
 @citizen_required
 def change_password():

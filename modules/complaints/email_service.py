@@ -79,17 +79,17 @@ def send_report_email(report_id, name, mobile, location, waste_type,
     html_body = f"""<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#1f2937">
   <h2 style="margin:0 0 12px">New Waste Complaint <span style="color:#0e7a52">#{ref}</span></h2>
   <table cellpadding="6" style="border-collapse:collapse">
-    <tr><td><b>Submitted at</b></td><td>{stamp}</td></tr>
-    <tr><td><b>Name</b></td><td>{name}</td></tr>
-    <tr><td><b>Mobile</b></td><td>{mobile}</td></tr>
-    <tr><td><b>Location</b></td><td>{location}</td></tr>
-    <tr><td><b>Waste type</b></td><td>{waste_type}</td></tr>
-    <tr><td><b>Priority</b></td><td>{priority}</td></tr>
+    <tr><td><b>Submitted at</b></td><td>{html_escape(str(stamp))}</td></tr>
+    <tr><td><b>Name</b></td><td>{html_escape(str(name))}</td></tr>
+    <tr><td><b>Mobile</b></td><td>{html_escape(str(mobile))}</td></tr>
+    <tr><td><b>Location</b></td><td>{html_escape(str(location))}</td></tr>
+    <tr><td><b>Waste type</b></td><td>{html_escape(str(waste_type))}</td></tr>
+    <tr><td><b>Priority</b></td><td>{html_escape(str(priority))}</td></tr>
     <tr><td><b>Status</b></td><td>Submitted</td></tr>
-    <tr><td><b>Image</b></td><td>{filename or 'not provided'}</td></tr>
+    <tr><td><b>Image</b></td><td>{html_escape(str(filename or 'not provided'))}</td></tr>
   </table>
   <p style="margin:14px 0 4px"><b>Description</b></p>
-  <p style="white-space:pre-wrap;margin:0">{description}</p>
+  <p style="white-space:pre-wrap;margin:0">{html_escape(str(description))}</p>
 </div>"""
 
     msg = MIMEMultipart("mixed")

@@ -1,4 +1,5 @@
 {% extends "admin_base.html" %}
+{% from "_pagination.html" import paginate %}
 {% block title %}Messages{% endblock %}
 {% block crumb %}Complaints · Messages{% endblock %}
 {% block heading %}Contact messages{% endblock %}
@@ -34,5 +35,6 @@
       </tbody>
     </table>
   </div>
+  {{ paginate(page, pages, 'admin.messages') }}
 </div>
 {% endblock %}

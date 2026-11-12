@@ -1,4 +1,5 @@
 {% extends "admin_base.html" %}
+{% from "_pagination.html" import paginate %}
 {% block title %}Complaint queue{% endblock %}
 {% block crumb %}Complaints · Queue{% endblock %}
 {% block heading %}Complaint queue{% endblock %}
@@ -64,7 +65,7 @@
 
   <div class="table-toolbar">
     <div><h3>{{ total }} complaint{{ 's' if total != 1 }}</h3>
-      <p>AI predictions, duplicate context and status control on every row.</p></div>
+      <p>AI predictions, duplicate context and status control on every row.{% if pages > 1 %} Showing {{ reports|length }} of {{ total }} on page {{ page }} of {{ pages }}.{% endif %}</p></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       {% if filters.needs_review %}<span class="badge badge-warn">AI review queue active</span>{% endif %}
       <a class="chip-btn neutral" href="{{ url_for('admin.map_view') }}">View on map →</a>
@@ -83,10 +84,14 @@
         {% for r in reports %}
         <tr data-status="{{ r.status|status_class }}">
           <td class="mono nowrap">{{ r.tracking_id }}
-            {% if r.ai_needs_review %}<br><span class="badge badge-warn">review</span>{% endif %}</td>
+            {% if r.ai_needs_review %}<br><span class="badge badge-warn">review</span>
+            {% elif r.final_category %}<br><span class="badge badge-ai">verified</span>{% endif %}
+            {% if r.duplicate_of_report_id %}<br><span class="badge badge-warn">duplicate</span>{% endif %}</td>
           <td><b>{{ r.location }}</b><br><small>{{ r.name|mask_name }} · {{ r.area or 'no area' }}</small></td>
           <td class="nowrap">{{ r.waste_type }}
-            {% if r.ai_category and r.ai_category != r.waste_type %}
+            {% if r.final_category and r.final_category != r.waste_type %}
+            <br><small class="muted">verified {{ r.final_category }}</small>
+            {% elif r.ai_category and r.ai_category != r.waste_type %}
             <br><small class="muted">AI says {{ r.ai_category }}</small>{% endif %}</td>
           <td class="nowrap">{{ r.ai_urgency or '—' }}
             {% if r.ai_confidence is not none %}
@@ -105,5 +110,6 @@
       <h3>No visible rows</h3><p>Adjust the search text or status tab.</p>
     </div>
   </div>
+  {{ paginate(page, pages, 'admin.complaints') }}
 </div>
 {% endblock %}

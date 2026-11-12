@@ -68,7 +68,10 @@ def _verify_csrf_return():
     if request.accept_mimetypes.best == "application/json" or request.is_json:
         return {"error": message}, status
     flash(message, "error")
-    return redirect(request.referrer or url_for("public.home")), status
+    # 302 (not the 400 from _verify_csrf): browsers only follow redirects on
+    # 3xx, so this is what makes the flashed error actually reach the user.
+    # JSON/API callers still receive the 400 above.
+    return redirect(request.referrer or url_for("public.home"))
 
 
 # ---------------------------------------------------------------------------

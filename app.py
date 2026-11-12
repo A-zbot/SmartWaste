@@ -57,13 +57,42 @@ def create_app():
 
 def _install_security_headers(app):
     """Baseline hardening headers on every response (never overrides a
-    response that already sets its own value)."""
+    response that already sets its own value).
+
+    CSP notes: styles and scripts are heavily inline in the server-rendered
+    templates (``onclick`` handlers, JSON data islands), so ``'unsafe-inline'``
+    is required for both; the policy still pins every external origin to
+    ``'self'`` plus the OpenStreetMap tile CDN used by the Leaflet map.
+    HSTS is only emitted in production (never over plain-HTTP dev servers).
+    """
+    csp = "; ".join([
+        "default-src 'self'",
+        "script-src 'self' 'unsafe-inline'",
+        "style-src 'self' 'unsafe-inline'",
+        "img-src 'self' data: https://*.tile.openstreetmap.org",
+        "font-src 'self'",
+        "connect-src 'self'",
+        "object-src 'none'",
+        "base-uri 'self'",
+        "form-action 'self'",
+        "frame-ancestors 'self'",
+    ])
 
     @app.after_request
     def _apply_security_headers(response):
         response.headers.setdefault("X-Content-Type-Options", "nosniff")
         response.headers.setdefault("X-Frame-Options", "SAMEORIGIN")
         response.headers.setdefault("Referrer-Policy", "same-origin")
+        response.headers.setdefault("Content-Security-Policy", csp)
+        response.headers.setdefault(
+            "Permissions-Policy",
+            "geolocation=(self), camera=(), microphone=(), payment=()",
+        )
+        if config.IS_PRODUCTION:
+            response.headers.setdefault(
+                "Strict-Transport-Security",
+                "max-age=31536000; includeSubDomains",
+            )
         return response
 
 

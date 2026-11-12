@@ -94,7 +94,10 @@ def classification_summary():
                     "cv_f1_macro": c.get("cv_f1_macro_mean"),
                     "test_f1_macro": (c.get("test_metrics") or {}).get("f1_macro"),
                 }
-                for c in report.get("candidates", [])
+                # The training report stores per-model entries under "models"
+                # (intelligence/model_training.py); "candidates" was never
+                # written, so this table used to render empty.
+                for c in report.get("models", [])
             ],
             "confusion_matrix_test": report.get("test_confusion_matrix"),
             "confusion_matrix_holdout": (report.get("holdout") or {}).get("confusion_matrix"),

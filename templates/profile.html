@@ -64,6 +64,22 @@
 
     <div style="display:grid;gap:18px">
       <div class="card">
+        <div class="card-head"><div><h3>Edit profile</h3><p>Name and email used across the portal.</p></div></div>
+        <div class="detail-block">
+          <form method="post" action="{{ url_for('auth.update_profile') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <label class="field">Name
+              <input name="name" value="{{ user.name }}" required minlength="2" maxlength="80">
+            </label>
+            <label class="field">Email
+              <input name="email" type="email" value="{{ user.email }}" required>
+            </label>
+            <button class="btn btn-primary btn-block" type="submit">Save changes</button>
+          </form>
+        </div>
+      </div>
+
+      <div class="card">
         <div class="card-head"><div><h3>Account</h3><p>Profile details and security.</p></div></div>
         <div class="detail-block">
           <div class="kv">

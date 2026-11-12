@@ -202,6 +202,8 @@ def build_complaint_pdf(report, *, history=(), prediction=None,
         ("Reported category", _field(report, "waste_type")),
         ("AI category", _field(report, "ai_category")),
         ("AI urgency", _field(report, "ai_urgency")),
+        ("Verified category (admin)", _field(report, "final_category")),
+        ("Verified priority (admin)", _field(report, "final_urgency")),
     ]
     confidence = _field(report, "ai_confidence")
     meta.append(("AI confidence",
@@ -264,6 +266,11 @@ def build_complaint_pdf(report, *, history=(), prediction=None,
         ("Model version", _field(prediction, "model_version")),
         ("Predicted category", _field(report, "ai_category")),
         ("Predicted urgency", _field(report, "ai_urgency")),
+        ("Verified category (admin)", _field(report, "final_category")),
+        ("Verified priority (admin)", _field(report, "final_urgency")),
+        ("Reviewed by", _field(report, "ai_reviewed_by")),
+        ("Reviewed at", _when(_field(report, "ai_reviewed_at"))
+         if _field(report, "ai_reviewed_at") else None),
         ("Recorded at", _when(_field(prediction, "created_at"))),
     ]
     if not is_admin:

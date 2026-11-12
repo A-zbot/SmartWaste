@@ -3,6 +3,7 @@ management with AI explanations, hotspot map, forecasting, model evaluation,
 user management, audit trail and CSV export (Modules B-G).
 """
 
+import re
 import threading
 from datetime import datetime, timezone
 
@@ -19,6 +20,7 @@ from flask import (
 )
 
 from config import (
+    ALLOWED_TRANSITIONS,
     CATEGORIES,
     COMPLAINT_STATUSES,
     DBSCAN_EPS_METERS,
@@ -36,7 +38,7 @@ from intelligence.hotspot_detection import (
 )
 from intelligence.model_evaluation import full_summary
 from intelligence.preprocessing import describe as preprocessing_describe
-from intelligence.priority_predictor import recommend_action
+from intelligence.priority_predictor import effective_urgency, recommend_action
 from intelligence.recommender import build_recommendations
 from security import admin_required, audit
 from modules.admin import services as admin_services
@@ -78,28 +80,53 @@ def dashboard():
 # ---------------------------------------------------------------------------
 # Complaint management
 # ---------------------------------------------------------------------------
+QUEUE_PER_PAGE = 20
+
+
+def _paginate(args, per_page):
+    """Return ``(page, per_page)`` with an invalid/absent page defaulting to 1."""
+    try:
+        page = int(args.get("page", 1))
+    except (TypeError, ValueError):
+        page = 1
+    return max(1, page), per_page
+
+
 def _complaint_list_context(args):
     filters = admin_services.parse_filters(args)
-    rows = admin_services.filtered_reports(filters)
+    page, per_page = _paginate(args, QUEUE_PER_PAGE)
+    total = admin_services.count_filtered_reports(filters)
+    pages = max(1, -(-total // per_page))
+    page = min(page, pages)
+    rows = admin_services.filtered_reports(
+        filters, limit=per_page, offset=(page - 1) * per_page
+    )
     counts = admin_services.status_breakdown(filters)
-    return filters, rows, counts
+    needs_review_count = admin_services.count_filtered_reports(
+        {**filters, "needs_review": True}
+    )
+    return filters, rows, counts, total, page, pages, needs_review_count
 
 
 @bp.route("/admin/complaints")
 @admin_required
 def complaints():
-    filters, rows, counts = _complaint_list_context(request.args)
+    filters, rows, counts, total, page, pages, needs_review_count = (
+        _complaint_list_context(request.args)
+    )
     return render_template(
         "admin/complaints.html",
         filters=filters,
         reports=rows,
         counts=counts,
-        total=len(rows),
+        total=total,
+        page=page,
+        pages=pages,
         areas=admin_services.available_areas(),
         categories=CATEGORIES,
         statuses=COMPLAINT_STATUSES,
         priorities=PRIORITIES,
-        needs_review_count=sum(1 for r in rows if r["ai_needs_review"]),
+        needs_review_count=needs_review_count,
     )
 
 
@@ -161,6 +188,12 @@ def complaint_detail(report_id):
             longitude=report["longitude"], category=report["waste_type"],
             exclude_report_id=report["id"], limit=8,
         )
+        dup_target = None
+        if report["duplicate_of_report_id"]:
+            dup_target = con.execute(
+                "SELECT id, tracking_id, status FROM reports WHERE id=?",
+                (report["duplicate_of_report_id"],),
+            ).fetchone()
         cluster = None
         for item in load_clusters():
             if report["id"] in item["report_ids"]:
@@ -176,15 +209,219 @@ def complaint_detail(report_id):
             feedback=feedback,
             owner=extra["owner"],
             duplicates=duplicates,
+            dup_target=dup_target,
             cluster=cluster,
             statuses=COMPLAINT_STATUSES,
+            next_statuses=[
+                s for s in COMPLAINT_STATUSES
+                if s == report["status"]
+                or s in ALLOWED_TRANSITIONS.get(report["status"], [])
+            ],
+            categories=CATEGORIES,
+            priorities=PRIORITIES,
             recommended_action=recommend_action(
                 report["ai_category"] or report["waste_type"],
                 report["ai_urgency"] or report["priority"],
             ),
+            effective_priority=effective_urgency(
+                report["priority"], report["ai_urgency"]
+            ),
         )
     finally:
         con.close()
+
+
+@bp.route("/admin/complaint/<int:report_id>/ai-review", methods=["POST"])
+@admin_required
+def ai_review(report_id):
+    """Confirm or correct the model's classification (Part 4 review workflow).
+
+    The original ``ai_*`` prediction is never overwritten - the verified values
+    live in ``final_*`` so evaluation numbers stay honest.
+    """
+    final_category = request.form.get("final_category", "").strip()
+    final_urgency = request.form.get("final_urgency", "").strip()
+    note = request.form.get("ai_review_note", "").strip()
+
+    def _reject(message):
+        flash(message, "error")
+        return redirect(url_for("admin.complaint_detail", report_id=report_id))
+
+    if final_category not in CATEGORIES:
+        return _reject("Choose a valid waste category to confirm.")
+    if final_urgency and final_urgency not in PRIORITIES:
+        return _reject("Choose a valid priority level.")
+    if len(note) > 500:
+        return _reject("Review note must be 500 characters or fewer.")
+
+    con = get_connection()
+    try:
+        report = con.execute(
+            "SELECT id, status, user_id, tracking_id, ai_category, ai_urgency "
+            "FROM reports WHERE id=?",
+            (report_id,),
+        ).fetchone()
+        if report is None:
+            abort(404)
+
+        changed = final_category != report["ai_category"]
+        parts = [f"category {'corrected to' if changed else 'confirmed as'} "
+                 f"'{final_category}' (model: {report['ai_category'] or 'unavailable'})"]
+        if final_urgency:
+            parts.append(f"priority {'corrected to' if final_urgency != report['ai_urgency'] else 'confirmed as'} "
+                         f"'{final_urgency}' (model: {report['ai_urgency'] or 'unavailable'})")
+        if note:
+            parts.append(note)
+        remark = "AI review: " + "; ".join(parts) + "."
+
+        con.execute(
+            "UPDATE reports SET final_category=?, final_urgency=?, ai_review_note=?, "
+            " ai_reviewed_at=?, ai_reviewed_by=?, ai_needs_review=0, updated_at=? "
+            "WHERE id=?",
+            (
+                final_category,
+                final_urgency or None,
+                note or None,
+                complaint_services.utc_now(),
+                "administrator",
+                complaint_services.utc_now(),
+                report_id,
+            ),
+        )
+        complaint_services.add_history(
+            con, report_id, report["status"], report["status"], remark,
+            actor_type="admin", actor_label="administrator",
+        )
+        complaint_services.notify_user(
+            con, report["user_id"], report_id,
+            "Complaint classification verified",
+            f"Our team reviewed the AI classification for {report['tracking_id']} "
+            f"and confirmed it as '{final_category}'.",
+            link=url_for("complaints.detail", report_id=report_id),
+        )
+        con.commit()
+    finally:
+        con.close()
+
+    audit(
+        "complaint.ai_review", entity="report", entity_id=report_id,
+        detail=remark, actor_type="admin", ip=request.remote_addr,
+    )
+    flash(
+        f"AI review saved: {report['tracking_id']} verified as '{final_category}'.",
+        "success",
+    )
+    return redirect(url_for("admin.complaint_detail", report_id=report_id))
+
+
+@bp.route("/admin/complaint/<int:report_id>/duplicate", methods=["POST"])
+@admin_required
+def link_duplicate(report_id):
+    """Link this complaint as a duplicate of an earlier one (advisory -> recorded)."""
+    target_ref = request.form.get("duplicate_of", "").strip()
+    also_reject = request.form.get("reject_duplicate") == "on"
+
+    def _reject(message):
+        flash(message, "error")
+        return redirect(url_for("admin.complaint_detail", report_id=report_id))
+
+    match = re.fullmatch(r"(?:SW-)?0*(\d{1,6})", target_ref, re.I)
+    if not match:
+        return _reject("Enter the tracking ID (e.g. SW-00012) or number of the original complaint.")
+    target_id = int(match.group(1))
+    if target_id == report_id:
+        return _reject("A complaint cannot be a duplicate of itself.")
+
+    con = get_connection()
+    try:
+        report = con.execute(
+            "SELECT id, status, user_id, tracking_id FROM reports WHERE id=?",
+            (report_id,),
+        ).fetchone()
+        if report is None:
+            abort(404)
+        target = con.execute(
+            "SELECT id, tracking_id, status, duplicate_of_report_id FROM reports WHERE id=?",
+            (target_id,),
+        ).fetchone()
+        if target is None:
+            return _reject("The original complaint you entered does not exist.")
+        if target["duplicate_of_report_id"] == report_id:
+            return _reject("That would create a circular duplicate link.")
+
+        now = complaint_services.utc_now()
+        con.execute(
+            "UPDATE reports SET duplicate_of_report_id=?, updated_at=? WHERE id=?",
+            (target_id, now, report_id),
+        )
+        complaint_services.add_history(
+            con, report_id, report["status"], report["status"],
+            f"Linked as duplicate of {target['tracking_id']}",
+            actor_type="admin", actor_label="administrator",
+        )
+        complaint_services.notify_user(
+            con, report["user_id"], report_id,
+            "Complaint linked as duplicate",
+            f"{report['tracking_id']} was linked to the earlier report "
+            f"{target['tracking_id']}; both are tracked together.",
+            link=url_for("complaints.detail", report_id=report_id),
+        )
+        con.commit()
+    finally:
+        con.close()
+
+    audit(
+        "complaint.linked_duplicate", entity="report", entity_id=report_id,
+        detail=f"{report['tracking_id']} -> duplicate of {target['tracking_id']} (#{target_id})",
+        actor_type="admin", ip=request.remote_addr,
+    )
+    message = f"{report['tracking_id']} linked as duplicate of {target['tracking_id']}."
+    flash(message, "success")
+
+    if also_reject:
+        result = complaint_services.update_status(
+            report_id, "Rejected",
+            remark=f"Duplicate of {target['tracking_id']}",
+            ip=request.remote_addr,
+        )
+        if not result.get("ok"):
+            flash(f"Link saved, but status could not change: {result.get('error')}", "error")
+    return redirect(url_for("admin.complaint_detail", report_id=report_id))
+
+
+@bp.route("/admin/complaint/<int:report_id>/duplicate/clear", methods=["POST"])
+@admin_required
+def clear_duplicate(report_id):
+    con = get_connection()
+    try:
+        report = con.execute(
+            "SELECT id, status, tracking_id, duplicate_of_report_id FROM reports WHERE id=?",
+            (report_id,),
+        ).fetchone()
+        if report is None:
+            abort(404)
+        if not report["duplicate_of_report_id"]:
+            flash("This complaint is not linked as a duplicate.", "error")
+            return redirect(url_for("admin.complaint_detail", report_id=report_id))
+        con.execute(
+            "UPDATE reports SET duplicate_of_report_id=NULL, updated_at=? WHERE id=?",
+            (complaint_services.utc_now(), report_id),
+        )
+        complaint_services.add_history(
+            con, report_id, report["status"], report["status"],
+            "Duplicate link removed",
+            actor_type="admin", actor_label="administrator",
+        )
+        con.commit()
+    finally:
+        con.close()
+    audit(
+        "complaint.cleared_duplicate", entity="report", entity_id=report_id,
+        detail=f"{report['tracking_id']} unlinked",
+        actor_type="admin", ip=request.remote_addr,
+    )
+    flash(f"Duplicate link removed from {report['tracking_id']}.", "success")
+    return redirect(url_for("admin.complaint_detail", report_id=report_id))
 
 
 @bp.route("/admin/complaint/<int:report_id>/status", methods=["POST"])
@@ -212,15 +449,27 @@ def update_status(report_id):
 @bp.route("/update_status/<int:report_id>/<status>")
 @admin_required
 def legacy_update_status(report_id, status):
-    """Backward-compatible link from SmartWaste 1.x emails/bookmarks."""
-    result = complaint_services.update_status(
-        report_id, status, actor_label="administrator", ip=request.remote_addr
+    """Backward-compatible link from SmartWaste 1.x emails/bookmarks.
+
+    A GET must never mutate state (CSRF via ``<img src>`` etc.), so this
+    renders a CSRF-protected confirmation that POSTs to the real endpoint.
+    """
+    if status not in COMPLAINT_STATUSES:
+        abort(404)
+    con = get_connection()
+    try:
+        report = con.execute(
+            "SELECT id, tracking_id, status FROM reports WHERE id=?", (report_id,)
+        ).fetchone()
+    finally:
+        con.close()
+    if report is None:
+        abort(404)
+    return render_template(
+        "admin/confirm_status.html",
+        report=report,
+        new_status=status,
     )
-    if not result.get("ok"):
-        flash(result.get("error", "Could not update the complaint."), "error")
-    else:
-        flash(f"Status changed to {result['new_status']}.", "success")
-    return redirect(url_for("admin.complaint_detail", report_id=report_id))
 
 
 # ---------------------------------------------------------------------------
@@ -415,16 +664,34 @@ def toggle_user(user_id):
 @bp.route("/admin/messages")
 @admin_required
 def messages():
-    payload = admin_services.message_rows(limit=200)
-    return render_template("admin/messages.html", payload=payload)
+    page, per_page = _paginate(request.args, 20)
+    payload = admin_services.message_rows(limit=per_page)
+    pages = max(1, -(-payload["total"] // per_page))
+    page = min(page, pages)
+    if page > 1:
+        payload = admin_services.message_rows(
+            limit=per_page, offset=(page - 1) * per_page
+        )
+    return render_template(
+        "admin/messages.html", payload=payload, page=page, pages=pages
+    )
 
 
 @bp.route("/admin/audit")
 @admin_required
 def audit_log():
     action = (request.args.get("action") or "").strip()[:60]
-    payload = admin_services.audit_rows(limit=300, action=action)
-    return render_template("admin/audit.html", payload=payload, action=action)
+    page, per_page = _paginate(request.args, 20)
+    payload = admin_services.audit_rows(limit=per_page, action=action)
+    pages = max(1, -(-payload["total"] // per_page))
+    page = min(page, pages)
+    if page > 1:
+        payload = admin_services.audit_rows(
+            limit=per_page, action=action, offset=(page - 1) * per_page
+        )
+    return render_template(
+        "admin/audit.html", payload=payload, action=action, page=page, pages=pages
+    )
 
 
 # ---------------------------------------------------------------------------

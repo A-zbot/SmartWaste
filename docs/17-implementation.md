@@ -24,7 +24,7 @@ SmartWaste/
 ├── experiments/           # evaluation.py, RESULTS.md
 ├── data/                  # seeded corpora, duplicate pairs, README, ANNOTATION
 ├── scripts/               # generate_dataset.py, build_duplicate_pairs.py, train_models.py
-├── tests/                 # 73 tests in 6 files
+├── tests/                 # 115 tests in 12 files
 ├── templates/ static/     # UI (citizen + admin bases)
 ├── docs/                  # this documentation set
 ├── .github/workflows/ci.yml
@@ -78,6 +78,18 @@ sequenceDiagram
   …) so UI, ML and tests can never drift apart.
 * **AI enrichment happens before the INSERT** (`services.create_complaint`),
   guaranteeing every stored row carries its prediction and explanation.
+* **Server-enforced status lifecycle** (`config.ALLOWED_TRANSITIONS` checked
+  in `complaints/services.py::update_status`): templates only offer the legal
+  `next_statuses`, and illegal jumps fail with an explicit error even when
+  driven by hand-crafted requests.
+* **Server-side pagination** on the admin queue, messages inbox, audit log and
+  citizen history (`LIMIT/OFFSET` + `COUNT(*)`, query-string round-trip of all
+  filters in the page links).
+* **Request-path caching with explicit invalidation keys**: duplicate-detection
+  TF-IDF matrix keyed by a content hash of the candidate corpus, forecast
+  payloads memoized on a 120 s TTL keyed by row-count/day signature, and model
+  evaluation reports cached by file mtime (so a retrain is picked up
+  immediately).
 * **Background threads for e-mail** (`status_service` → `send_status_email`)
   keep response latency unaffected; failures are caught and logged.
 * **Template filters** (`format_datetime`, `time_ago`, `status_badge`,

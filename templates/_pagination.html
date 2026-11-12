@@ -1,0 +1,14 @@
+{% macro paginate(page, pages, endpoint) %}
+{% if pages > 1 %}
+<nav class="pagination" aria-label="Pagination"
+     style="display:flex;gap:10px;justify-content:center;align-items:center;margin-top:18px;flex-wrap:wrap">
+  {% if page > 1 %}
+  <a class="chip-btn neutral" href="{{ url_for(endpoint, **dict(request.args, page=page-1)) }}">&larr; Previous</a>
+  {% endif %}
+  <span class="muted" style="font-size:13px">Page {{ page }} of {{ pages }}</span>
+  {% if page < pages %}
+  <a class="chip-btn neutral" href="{{ url_for(endpoint, **dict(request.args, page=page+1)) }}">Next &rarr;</a>
+  {% endif %}
+</nav>
+{% endif %}
+{% endmacro %}

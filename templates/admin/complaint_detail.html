@@ -10,6 +10,7 @@
     {{ status_badge(report.status) }}
     {{ priority_badge(report.priority) }}
     {% if report.ai_urgency %}<span class="badge badge-ai">AI: {{ report.ai_urgency }}</span>{% endif %}
+    {% if report.final_category %}<span class="badge badge-ai">Verified</span>{% endif %}
     {% if report.ai_needs_review %}<span class="badge badge-warn">Needs review</span>{% endif %}
     <span class="muted" style="font-size:13px">submitted {{ report.created_at|dt }}{% if report.resolved_at %} · resolved {{ report.resolved_at|dt }}{% endif %}</span>
   </div>
@@ -75,7 +76,7 @@
           <div class="history-item">
             <span class="history-dot"></span>
             <div>
-              <b>{{ h.old_status or '—' }} → {{ h.new_status }}</b>
+              <b>{% if h.old_status and h.old_status != h.new_status %}{{ h.old_status }} → {{ h.new_status }}{% else %}{{ h.new_status }}{% endif %}</b>
               <small>{{ h.created_at|dt }} · {{ h.actor_label or h.actor_type }}</small>
               {% if h.remark %}<p>{{ h.remark }}</p>{% endif %}
             </div>
@@ -101,7 +102,7 @@
           <div class="field-row">
             <label class="field">New status
               <select name="status" required>
-                {% for s in statuses %}<option value="{{ s }}" {{ 'selected' if s == report.status }}>{{ s }}</option>{% endfor %}
+                {% for s in next_statuses %}<option value="{{ s }}" {{ 'selected' if s == report.status }}>{{ s }}</option>{% endfor %}
               </select>
             </label>
             <label class="field">Resolution evidence photo (optional)
@@ -132,8 +133,48 @@
       <div class="ai-row"><span>Below threshold</span><b>{{ 'Yes - verify manually' if report.ai_needs_review else 'No' }}</b></div>
       <div class="ai-row"><span>Model</span><b style="font-size:12px">{{ prediction.model_name if prediction else '—' }}</b></div>
       <div class="ai-row"><span>Recommended action</span><b>{{ recommended_action }}</b></div>
+      <div class="ai-row"><span>System priority</span><b>{{ effective_priority or report.priority }}</b></div>
       <div class="ai-row"><span>Citizen vs AI</span><b>
         {{ 'agree' if report.waste_type == report.ai_category else 'differ' }}</b></div>
+      {% if report.final_category %}
+      <div class="ai-row"><span>Verified category</span><b>{{ report.final_category }}</b></div>
+      {% if report.final_urgency %}<div class="ai-row"><span>Verified priority</span><b>{{ report.final_urgency }}</b></div>{% endif %}
+      <div class="ai-row"><span>Reviewed by</span><b style="font-size:12px">
+        {{ report.ai_reviewed_by or 'administrator' }} · {{ report.ai_reviewed_at|dt }}</b></div>
+      {% endif %}
+    </div>
+
+    <div class="card card-pad">
+      <span class="eyebrow">AI review{% if report.final_category %} · completed{% else %} · pending{% endif %}</span>
+      <p class="muted" style="font-size:12.5px;margin:8px 0 12px">
+        Confirm or correct the model output. The original prediction stays recorded
+        for evaluation; verified values are shown to the citizen.</p>
+      <form method="post" action="{{ url_for('admin.ai_review', report_id=report.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <label class="field">Verified category
+          <select name="final_category" required>
+            <option value="">Choose a category…</option>
+            {% for c in categories %}
+            <option value="{{ c }}" {{ 'selected' if c == (report.final_category or report.ai_category) }}>{{ c }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label class="field">Verified priority (optional)
+          <select name="final_urgency">
+            <option value="">Keep model urgency</option>
+            {% for p in priorities %}
+            <option value="{{ p }}" {{ 'selected' if p == (report.final_urgency or report.ai_urgency) }}>{{ p }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label class="field">Review note (optional)
+          <textarea name="ai_review_note" maxlength="500" style="min-height:70px"
+            placeholder="e.g. Photo clearly shows construction debris, not mixed garbage.">{{ report.ai_review_note or '' }}</textarea>
+        </label>
+        <button class="btn btn-primary btn-block" type="submit">
+          {{ 'Update AI review' if report.final_category else 'Confirm classification' }}
+        </button>
+      </form>
     </div>
 
     {% if explanation.text_features and explanation.text_features.category_task.available %}
@@ -145,18 +186,78 @@
         <span class="feature-tag {{ f.direction }}">{{ f.term }} <em>{{ '%+.3f'|format(f.contribution) }}</em></span>
         {% endfor %}
       </div>
-      {% if explanation.context_factors %}
+    </div>
+    {% endif %}
+
+    {% if explanation.text_features and explanation.text_features.urgency_task.available %}
+    <div class="card card-pad">
+      <span class="eyebrow">Why this priority</span>
+      <p class="muted" style="font-size:12.5px;margin:8px 0 12px">{{ explanation.text_features.urgency_task.method_note }}</p>
+      {% if explanation.text_features.urgency_task.features %}
+      <div class="feature-tags">
+        {% for f in explanation.text_features.urgency_task.features %}
+        <span class="feature-tag {{ f.direction }}">{{ f.term }} <em>{{ '%+.3f'|format(f.contribution) }}</em></span>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="muted" style="font-size:13px">{{ explanation.text_features.urgency_task.note or 'No recognised content terms in this complaint.' }}</p>
+      {% endif %}
       <div class="explain-list mt-3">
+        <div class="explain-item">
+          <b>Model urgency confidence:
+            {{ (explanation.model.urgency.confidence * 100)|round|int if explanation.model.urgency.confidence is not none else '—' }}%</b>
+          <small>Probability the urgency model assigns to
+            {{ explanation.model.urgency.urgency or 'its top class' }}.</small>
+        </div>
+        <div class="explain-item">
+          <b>System priority: {{ effective_priority or report.priority }}</b>
+          <small>More urgent of the citizen's declared priority ({{ report.priority }})
+            and the model prediction ({{ report.ai_urgency or 'unavailable' }}).</small>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    {% if explanation.context_factors %}
+    <div class="card card-pad">
+      <span class="eyebrow">Context factors</span>
+      <div class="explain-list mt-2">
         {% for factor in explanation.context_factors %}
         <div class="explain-item"><b>{{ factor.label }}: {{ factor.value }}</b><small>{{ factor.detail }}</small></div>
         {% endfor %}
       </div>
-      {% endif %}
     </div>
     {% endif %}
 
     <div class="card card-pad">
       <span class="eyebrow">Possible duplicates</span>
+      {% if report.duplicate_of_report_id and dup_target %}
+      <div class="mini-note warn mt-2">
+        Linked as duplicate of
+        <a href="{{ url_for('admin.complaint_detail', report_id=dup_target.id) }}"><b>{{ dup_target.tracking_id }}</b></a>
+        · <span class="badge status-{{ dup_target.status|status_class }}">{{ dup_target.status }}</span>
+        <form method="post" action="{{ url_for('admin.clear_duplicate', report_id=report.id) }}" style="margin-top:8px">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="btn btn-ghost btn-sm" type="submit">Remove duplicate link</button>
+        </form>
+      </div>
+      {% else %}
+      <form method="post" action="{{ url_for('admin.link_duplicate', report_id=report.id) }}" class="mt-2">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="field-row">
+          <label class="field" style="flex:1">Link as duplicate of
+            <input name="duplicate_of" placeholder="e.g. SW-00012 or 12" autocomplete="off">
+          </label>
+          <label class="field" style="flex:0 0 auto;padding-top:22px">
+            <span style="display:flex;gap:6px;align-items:center;white-space:nowrap">
+              <input type="checkbox" name="reject_duplicate" value="on" style="width:auto">
+              also reject this complaint
+            </span>
+          </label>
+        </div>
+        <button class="btn btn-ghost btn-sm" type="submit">Link as duplicate</button>
+      </form>
+      {% endif %}
       {% if duplicates.matches %}
       <p class="muted" style="font-size:12.5px;margin-top:8px">
         {{ duplicates.match_count }} of {{ duplicates.checked }} recent complaints are textually similar

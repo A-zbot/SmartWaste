@@ -14,7 +14,7 @@ import sqlite3
 
 from config import DATABASE_PATH, LEGACY_CATEGORY_MAP, LEGACY_STATUS_MAP
 
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 
 
 # ---------------------------------------------------------------------------
@@ -95,6 +95,12 @@ CREATE TABLE IF NOT EXISTS reports (
     ai_urgency   TEXT,
     ai_confidence REAL,
     ai_needs_review INTEGER NOT NULL DEFAULT 0,
+    final_category TEXT,
+    final_urgency  TEXT,
+    ai_review_note TEXT,
+    ai_reviewed_at TIMESTAMP,
+    ai_reviewed_by TEXT,
+    duplicate_of_report_id INTEGER,
     source       TEXT NOT NULL DEFAULT 'live'
 );
 
@@ -221,6 +227,12 @@ UPGRADE_COLUMNS = {
         "ai_urgency": "TEXT",
         "ai_confidence": "REAL",
         "ai_needs_review": "INTEGER NOT NULL DEFAULT 0",
+        "final_category": "TEXT",
+        "final_urgency": "TEXT",
+        "ai_review_note": "TEXT",
+        "ai_reviewed_at": "TIMESTAMP",
+        "ai_reviewed_by": "TEXT",
+        "duplicate_of_report_id": "INTEGER",
         "source": "TEXT NOT NULL DEFAULT 'live'",
     },
 }

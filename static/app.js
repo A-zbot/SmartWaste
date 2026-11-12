@@ -542,6 +542,18 @@ document.addEventListener('DOMContentLoaded', () => {
   const dupButton = document.getElementById('dupCheckBtn');
   if (dupButton) dupButton.addEventListener('click', checkDuplicates);
 
+  // Auto-run the duplicate check once the description is substantial
+  // (debounced so we do not fire a request per keystroke).
+  const descField = document.getElementById('description');
+  if (descField) {
+    let dupTimer = null;
+    descField.addEventListener('input', () => {
+      clearTimeout(dupTimer);
+      if (descField.value.trim().length < 40) return;
+      dupTimer = setTimeout(checkDuplicates, 600);
+    });
+  }
+
   const dashForm = document.getElementById('dashboardFilters');
   if (dashForm) {
     dashForm.addEventListener('change', (e) => {

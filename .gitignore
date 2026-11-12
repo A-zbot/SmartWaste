@@ -2,5 +2,8 @@ __pycache__/
 *.pyc
 .env
 waste.db
+waste.db-shm
+waste.db-wal
+backups/
 uploads/*
 !uploads/.gitkeep

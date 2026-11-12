@@ -73,6 +73,18 @@ COMPLAINT_STATUSES = [
     "Submitted", "Under Review", "Assigned", "In Progress", "Resolved", "Rejected",
 ]
 
+# Legal lifecycle transitions, enforced by complaints.services.update_status.
+# Rejected -> Under Review is an appeal; Resolved -> In Progress is a reopen.
+# Same-status updates stay allowed (remark-only / evidence-only changes).
+ALLOWED_TRANSITIONS = {
+    "Submitted": ["Under Review", "Rejected"],
+    "Under Review": ["Assigned", "Rejected"],
+    "Assigned": ["In Progress"],
+    "In Progress": ["Resolved", "Rejected"],
+    "Rejected": ["Under Review"],
+    "Resolved": ["In Progress"],
+}
+
 # Ordered lifecycle used to render the citizen status timeline.
 STATUS_ORDER = {
     "Submitted": 0,

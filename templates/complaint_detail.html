@@ -12,6 +12,7 @@
       {{ status_badge(report.status) }}
       {{ priority_badge(report.priority) }}
       {% if report.ai_urgency %}<span class="badge badge-ai">AI urgency: {{ report.ai_urgency }}</span>{% endif %}
+      {% if report.final_category %}<span class="badge badge-ai">Verified by admin</span>{% endif %}
       {% if report.ai_needs_review %}<span class="badge badge-warn">AI confidence low</span>{% endif %}
     </div>
   </div>
@@ -132,6 +133,9 @@
     <div class="ai-panel">
       <h4>AI analysis</h4>
       <div class="ai-row"><span>Predicted category</span><b>{{ report.ai_category or 'unavailable' }}</b></div>
+      {% if report.final_category %}
+      <div class="ai-row"><span>Verified category</span><b>{{ report.final_category }}</b></div>
+      {% endif %}
       <div class="ai-row"><span>Model confidence</span><b>
         {{ (report.ai_confidence * 100)|round|int if report.ai_confidence is not none else '—' }}%
         {% if report.ai_confidence is not none %}
@@ -139,12 +143,20 @@
         {% endif %}
       </b></div>
       <div class="ai-row"><span>Predicted urgency</span><b>{{ report.ai_urgency or 'unavailable' }}</b></div>
+      {% if report.final_urgency %}
+      <div class="ai-row"><span>Verified priority</span><b>{{ report.final_urgency }}</b></div>
+      {% endif %}
       <div class="ai-row"><span>Your declared priority</span><b>{{ report.priority }}</b></div>
+      <div class="ai-row"><span>System priority</span><b>{{ effective_priority or report.priority }}</b></div>
       <div class="ai-row"><span>Recommended action</span><b>{{ recommended_action }}</b></div>
       <div class="ai-row"><span>Model</span><b style="font-size:12px">{{ explanation.model.category.name or '—' }}</b></div>
       {% if report.ai_needs_review %}
       <div class="mini-note warn mt-2" style="background:rgba(245,158,11,.15);border-color:rgba(245,158,11,.4);color:#FBD38D">
         Confidence below threshold - an administrator will manually verify this classification.
+      </div>
+      {% elif report.final_category %}
+      <div class="mini-note mt-2" style="background:rgba(16,185,129,.12);border-color:rgba(16,185,129,.35);color:#6EE7B7">
+        An administrator has verified this classification.
       </div>
       {% endif %}
     </div>
@@ -158,18 +170,57 @@
         <span class="feature-tag {{ f.direction }}">{{ f.term }} <em>{{ '%+.3f'|format(f.contribution) }}</em></span>
         {% endfor %}
       </div>
-      {% if explanation.context_factors %}
+    </div>
+    {% endif %}
+
+    {% if explanation.text_features and explanation.text_features.urgency_task.available %}
+    <div class="card card-pad">
+      <span class="eyebrow">Why this priority (explainable AI)</span>
+      <p class="muted" style="font-size:12.5px;margin:8px 0 12px">{{ explanation.text_features.urgency_task.method_note }}</p>
+      {% if explanation.text_features.urgency_task.features %}
+      <div class="feature-tags">
+        {% for f in explanation.text_features.urgency_task.features %}
+        <span class="feature-tag {{ f.direction }}">{{ f.term }} <em>{{ '%+.3f'|format(f.contribution) }}</em></span>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="muted" style="font-size:13px">{{ explanation.text_features.urgency_task.note or 'No recognised content terms in this complaint.' }}</p>
+      {% endif %}
       <div class="explain-list mt-3">
+        <div class="explain-item">
+          <b>Model urgency confidence:
+            {{ (explanation.model.urgency.confidence * 100)|round|int if explanation.model.urgency.confidence is not none else '—' }}%</b>
+          <small>Probability the urgency model assigns to
+            {{ explanation.model.urgency.urgency or 'its top class' }}.</small>
+        </div>
+        <div class="explain-item">
+          <b>System priority: {{ effective_priority or report.priority }}</b>
+          <small>The more urgent of your declared priority ({{ report.priority }})
+            and the model prediction ({{ report.ai_urgency or 'unavailable' }}).</small>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    {% if explanation.context_factors %}
+    <div class="card card-pad">
+      <span class="eyebrow">Context factors</span>
+      <div class="explain-list mt-2">
         {% for factor in explanation.context_factors %}
         <div class="explain-item"><b>{{ factor.label }}: {{ factor.value }}</b><small>{{ factor.detail }}</small></div>
         {% endfor %}
       </div>
-      {% endif %}
     </div>
     {% endif %}
 
     <div class="card card-pad">
       <span class="eyebrow">Possible duplicates nearby</span>
+      {% if report.duplicate_of_report_id and dup_target %}
+      <div class="mini-note warn mt-2">
+        Our team linked this complaint to the earlier report
+        <b>{{ dup_target.tracking_id }}</b> - both are tracked together.
+      </div>
+      {% endif %}
       {% if duplicates.matches %}
       <p class="muted" style="font-size:12.5px;margin-top:8px">
         {{ duplicates.match_count }} similar complaint(s) found among {{ duplicates.checked }}
@@ -222,7 +273,7 @@
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <label class="field">New status
           <select name="status" required>
-            {% for s in statuses %}<option value="{{ s }}" {{ 'selected' if s == report.status }}>{{ s }}</option>{% endfor %}
+            {% for s in next_statuses %}<option value="{{ s }}" {{ 'selected' if s == report.status }}>{{ s }}</option>{% endfor %}
           </select>
         </label>
         <label class="field">Remark for the citizen

@@ -1,0 +1,28 @@
+{% extends "admin_base.html" %}
+{% block title %}Confirm status change · SmartWaste{% endblock %}
+{% block crumb %}Complaints · Confirm change{% endblock %}
+{% block heading %}Confirm status change{% endblock %}
+
+{% block content %}
+<div class="card card-pad" style="max-width:620px">
+  <span class="eyebrow">Legacy link confirmation</span>
+  <h3 class="mt-2">{{ report.tracking_id }}</h3>
+  <p class="muted" style="font-size:14px;margin-top:8px">
+    You followed an old SmartWaste 1.x link that wants to move this complaint
+    from <b>{{ report.status }}</b> to <b>{{ new_status }}</b>.
+    Nothing has changed yet - confirm below to apply it.
+  </p>
+  <form method="post" action="{{ url_for('admin.update_status', report_id=report.id) }}" class="mt-3">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="status" value="{{ new_status }}">
+    <label class="field">Remark visible to the citizen (optional)
+      <textarea name="remark" maxlength="1000" style="min-height:80px"
+        placeholder="e.g. Updated from an emailed status link."></textarea>
+    </label>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn btn-primary" type="submit">Confirm: set status to {{ new_status }}</button>
+      <a class="btn btn-ghost" href="{{ url_for('admin.complaint_detail', report_id=report.id) }}">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

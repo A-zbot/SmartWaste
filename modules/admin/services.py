@@ -72,7 +72,7 @@ def _where(filters):
     return where, params
 
 
-def filtered_reports(filters, limit=None):
+def filtered_reports(filters, limit=None, offset=None):
     where, params = _where(filters)
     order = {
         "oldest": "created_at ASC",
@@ -84,9 +84,21 @@ def filtered_reports(filters, limit=None):
     if limit:
         sql += " LIMIT ?"
         params = [*params, int(limit)]
+        if offset:
+            sql += " OFFSET ?"
+            params = [*params, int(offset)]
     con = get_connection()
     try:
         return con.execute(sql, params).fetchall()
+    finally:
+        con.close()
+
+
+def count_filtered_reports(filters):
+    where, params = _where(filters)
+    con = get_connection()
+    try:
+        return con.execute(f"SELECT COUNT(*) FROM reports {where}", params).fetchone()[0]
     finally:
         con.close()
 
@@ -323,29 +335,36 @@ def set_user_active(user_id, active):
         con.close()
 
 
-def audit_rows(limit=200, action=""):
+def audit_rows(limit=200, action="", offset=0):
     con = get_connection()
     try:
         if action:
             rows = con.execute(
                 "SELECT * FROM audit_logs WHERE action LIKE ? "
-                "ORDER BY id DESC LIMIT ?", (f"%{action}%", int(limit)),
+                "ORDER BY id DESC LIMIT ? OFFSET ?",
+                (f"%{action}%", int(limit), int(offset or 0)),
             ).fetchall()
+            total = con.execute(
+                "SELECT COUNT(*) FROM audit_logs WHERE action LIKE ?",
+                (f"%{action}%",),
+            ).fetchone()[0]
         else:
             rows = con.execute(
-                "SELECT * FROM audit_logs ORDER BY id DESC LIMIT ?", (int(limit),)
+                "SELECT * FROM audit_logs ORDER BY id DESC LIMIT ? OFFSET ?",
+                (int(limit), int(offset or 0)),
             ).fetchall()
-        total = con.execute("SELECT COUNT(*) FROM audit_logs").fetchone()[0]
+            total = con.execute("SELECT COUNT(*) FROM audit_logs").fetchone()[0]
     finally:
         con.close()
     return {"rows": rows, "total": total}
 
 
-def message_rows(limit=200):
+def message_rows(limit=200, offset=0):
     con = get_connection()
     try:
         rows = con.execute(
-            "SELECT * FROM messages ORDER BY id DESC LIMIT ?", (int(limit),)
+            "SELECT * FROM messages ORDER BY id DESC LIMIT ? OFFSET ?",
+            (int(limit), int(offset or 0)),
         ).fetchall()
         total = con.execute("SELECT COUNT(*) FROM messages").fetchone()[0]
     finally:

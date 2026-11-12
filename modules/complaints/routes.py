@@ -2,6 +2,8 @@
 duplicate checks and notifications (Module A, with Modules B/C integration).
 """
 
+import re
+
 from flask import (
     Blueprint,
     Response,
@@ -17,6 +19,7 @@ from flask import (
 )
 
 from config import (
+    ALLOWED_TRANSITIONS,
     CATEGORIES,
     COMPLAINT_STATUSES,
     PRIORITIES,
@@ -26,7 +29,7 @@ from db import get_connection, loads
 from intelligence.duplicate_detection import find_duplicates
 from intelligence.explainability import explain_prediction
 from intelligence.hotspot_detection import cluster_membership
-from intelligence.priority_predictor import recommend_action
+from intelligence.priority_predictor import effective_urgency, recommend_action
 from security import citizen_required
 from modules.complaints import services
 
@@ -184,51 +187,88 @@ def duplicate_check():
 def track():
     q = request.args.get("q", "").strip()
     results = []
+    notice = None
     if q:
-        token = q.lstrip("#").strip()
-        by_ref = token[:3].upper() == "SW-"
-        if by_ref:
-            token = token[3:].strip()
-        digits = "".join(ch for ch in token if ch.isdigit())
+        # A standalone 10-digit run is a mobile number. It is only accepted as
+        # a second factor alongside a complaint ID - never on its own (PII).
+        mobile_match = re.search(r"(?<!\d)(\d{10})(?!\d)", q)
+        mobile = mobile_match.group(1) if mobile_match else None
+        id_match = re.search(r"SW-\s*(\d{1,6})", q, re.I)
+        if id_match is None:
+            id_match = re.search(r"(?<!\d)(\d{1,6})(?!\d)", q)
+
         con = get_connection()
         try:
-            if digits and (by_ref or (token.isdigit() and len(digits) <= 6)):
+            if id_match:
+                digits = int(id_match.group(1))
                 results = con.execute(
                     "SELECT * FROM reports WHERE id=? OR tracking_id=?",
-                    (int(digits), f"SW-{int(digits):05d}"),
+                    (digits, f"SW-{digits:05d}"),
                 ).fetchall()
-            elif digits:
-                results = con.execute(
-                    "SELECT * FROM reports WHERE mobile=? ORDER BY id DESC", (digits,)
-                ).fetchall()
-            elif len(token) >= 3:
-                results = con.execute(
-                    "SELECT * FROM reports WHERE tracking_id LIKE ? ORDER BY id DESC LIMIT 20",
-                    (f"{token.upper()}%",),
-                ).fetchall()
+                if mobile:
+                    matched = [r for r in results if r["mobile"] == mobile]
+                    if results and not matched:
+                        notice = ("That complaint exists, but the mobile number "
+                                  "does not match the report.")
+                    results = matched
+            elif mobile or re.search(r"(?<!\d)\d{7,}(?!\d)", q):
+                results = []
+                notice = ("A mobile number alone cannot look up complaints. "
+                          "Enter the tracking ID (e.g. SW-00012) or complaint "
+                          "number - the mobile is only accepted together with it.")
+            else:
+                token = q.lstrip("#").strip()
+                if token[:3].upper() == "SW-":
+                    token = token[3:].strip()
+                if len(token) >= 3:
+                    results = con.execute(
+                        "SELECT * FROM reports WHERE tracking_id LIKE ? ORDER BY id DESC LIMIT 20",
+                        (f"{token.upper()}%",),
+                    ).fetchall()
         finally:
             con.close()
-    return render_template("track.html", q=q, results=results, unread=_unread())
+    return render_template("track.html", q=q, results=results,
+                           notice=notice, unread=_unread())
+
+
+MY_REPORTS_PER_PAGE = 10
 
 
 @bp.route("/my_reports")
 @citizen_required
 def my_reports():
     user_id = session["user_id"]
+    try:
+        page = int(request.args.get("page", 1))
+    except (TypeError, ValueError):
+        page = 1
+    page = max(1, page)
     con = get_connection()
     try:
+        total = con.execute(
+            "SELECT COUNT(*) FROM reports WHERE user_id=?", (user_id,)
+        ).fetchone()[0]
+        pages = max(1, -(-total // MY_REPORTS_PER_PAGE))
+        page = min(page, pages)
         reports = con.execute(
-            "SELECT * FROM reports WHERE user_id=? ORDER BY id DESC", (user_id,)
+            "SELECT * FROM reports WHERE user_id=? ORDER BY id DESC LIMIT ? OFFSET ?",
+            (user_id, MY_REPORTS_PER_PAGE, (page - 1) * MY_REPORTS_PER_PAGE),
+        ).fetchall()
+        status_rows = con.execute(
+            "SELECT status, COUNT(*) AS n FROM reports WHERE user_id=? GROUP BY status",
+            (user_id,),
         ).fetchall()
     finally:
         con.close()
     counts = {status: 0 for status in COMPLAINT_STATUSES}
-    for row in reports:
-        counts[row["status"]] = counts.get(row["status"], 0) + 1
+    for row in status_rows:
+        counts[row["status"]] = row["n"]
     return render_template(
         "my_reports.html",
         reports=reports,
-        total=len(reports),
+        total=total,
+        page=page,
+        pages=pages,
         open_count=sum(counts[s] for s in COMPLAINT_STATUSES if s not in ("Resolved", "Rejected")),
         resolved=counts.get("Resolved", 0),
         unread=_unread(),
@@ -265,6 +305,12 @@ def detail(report_id):
                          "citizen_priority": report_row["priority"]},
             )
         cluster = cluster_membership(report_row["id"])
+        dup_target = None
+        if report_row["duplicate_of_report_id"]:
+            dup_target = con.execute(
+                "SELECT id, tracking_id, status FROM reports WHERE id=?",
+                (report_row["duplicate_of_report_id"],),
+            ).fetchone()
         return render_template(
             "complaint_detail.html",
             report=report_row,
@@ -274,11 +320,20 @@ def detail(report_id):
             explanation=explanation,
             feedback=feedback,
             duplicates=duplicates,
+            dup_target=dup_target,
             cluster=cluster,
             statuses=COMPLAINT_STATUSES,
+            next_statuses=[
+                s for s in COMPLAINT_STATUSES
+                if s == report_row["status"]
+                or s in ALLOWED_TRANSITIONS.get(report_row["status"], [])
+            ],
             recommended_action=recommend_action(
                 report_row["ai_category"] or report_row["waste_type"],
                 report_row["ai_urgency"] or report_row["priority"],
+            ),
+            effective_priority=effective_urgency(
+                report_row["priority"], report_row["ai_urgency"]
             ),
             can_manage=session.get("admin") is True,
             unread=_unread(),

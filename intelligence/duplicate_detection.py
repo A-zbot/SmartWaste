@@ -11,6 +11,9 @@ Nothing is auto-rejected: results are surfaced to the citizen and to
 administrators as *possible* duplicates with their evidence attached.
 """
 
+import hashlib
+import threading
+
 import numpy as np
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import linear_kernel
@@ -28,6 +31,11 @@ from intelligence.preprocessing import preprocess
 
 # Weights of the combined duplicate score.
 _W_TEXT, _W_GEO, _W_CATEGORY = 0.65, 0.25, 0.10
+
+# Fitted TF-IDF state for the candidate corpus. Refitting on every request is
+# wasteful, so the matrix is reused until the candidate descriptions change.
+_VEC_CACHE = {"sig": None, "vectorizer": None, "matrix": None}
+_VEC_LOCK = threading.Lock()
 
 
 def pair_similarity(text_a, text_b):
@@ -99,6 +107,44 @@ def _fetch_candidates(con, exclude_report_id=None, window_days=None):
     return con.execute(sql, params).fetchall()
 
 
+def _candidate_matrix(candidates):
+    """TF-IDF matrix for the candidate descriptions, cached by content hash.
+
+    Returns ``(vectorizer, matrix)`` or ``(None, None)`` when the corpus has
+    no usable terms. The cache key hashes the exact texts that were fitted,
+    so it can never serve a vectoriser built from different data.
+    """
+    corpus = [row["description"] or "" for row in candidates]
+    sig = hashlib.md5("\x1f".join(corpus).encode("utf-8")).hexdigest()
+    with _VEC_LOCK:
+        if _VEC_CACHE["sig"] == sig:
+            return _VEC_CACHE["vectorizer"], _VEC_CACHE["matrix"]
+
+    vectorizer = TfidfVectorizer(
+        preprocessor=preprocess,
+        ngram_range=(1, 2),
+        min_df=1,
+        sublinear_tf=True,
+        strip_accents="unicode",
+    )
+    try:
+        matrix = vectorizer.fit_transform(corpus)
+    except ValueError:
+        return None, None
+    with _VEC_LOCK:
+        _VEC_CACHE["sig"] = sig
+        _VEC_CACHE["vectorizer"] = vectorizer
+        _VEC_CACHE["matrix"] = matrix
+    return vectorizer, matrix
+
+
+def clear_vectorizer_cache():
+    with _VEC_LOCK:
+        _VEC_CACHE["sig"] = None
+        _VEC_CACHE["vectorizer"] = None
+        _VEC_CACHE["matrix"] = None
+
+
 def find_duplicates(text, latitude=None, longitude=None, category=None,
                     exclude_report_id=None, window_days=None, limit=5):
     """Return possible duplicates of *text* as a JSON-safe dict."""
@@ -131,21 +177,13 @@ def find_duplicates(text, latitude=None, longitude=None, category=None,
     if not candidates:
         return result
 
-    corpus = [text] + [row["description"] or "" for row in candidates]
-    try:
-        vectorizer = TfidfVectorizer(
-            preprocessor=preprocess,
-            ngram_range=(1, 2),
-            min_df=1,
-            sublinear_tf=True,
-            strip_accents="unicode",
-        )
-        matrix = vectorizer.fit_transform(corpus)
-    except ValueError:
+    vectorizer, matrix = _candidate_matrix(candidates)
+    if vectorizer is None:
         result["warnings"].append("vectorisation_failed")
         return result
 
-    similarities = linear_kernel(matrix[0:1], matrix[1:]).ravel()
+    query_vector = vectorizer.transform([text])
+    similarities = linear_kernel(query_vector, matrix).ravel()
 
     matches = []
     missing_coords = 0

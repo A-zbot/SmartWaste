@@ -4,19 +4,25 @@
 <section class="page-hero">
   <span class="eyebrow">Complaint status</span>
   <h1>Track a complaint</h1>
-  <p>Enter the tracking ID (SW-00001), the numeric ID, or the mobile number used while reporting.</p>
+  <p>Enter the tracking ID (SW-00001) or the numeric complaint number. A mobile
+    number is only accepted together with one of them.</p>
 </section>
 
 <section class="section" style="padding-top:32px">
   <div class="card card-pad" style="max-width:760px;margin:0 auto 22px">
     <form method="get" action="{{ url_for('complaints.track') }}" style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
-      <label class="field" style="flex:1;margin-bottom:0">Tracking ID or mobile number
-        <input name="q" value="{{ q }}" placeholder="e.g. SW-00001 or 9876543210" autofocus>
+      <label class="field" style="flex:1;margin-bottom:0">Tracking ID or complaint number
+        <input name="q" value="{{ q }}" placeholder="e.g. SW-00001 or 12 (optionally + mobile)" autofocus>
       </label>
       <button class="btn btn-primary" type="submit">Track →</button>
     </form>
-    <p class="field-help mt-1">Personal details are masked in public search results.</p>
+    <p class="field-help mt-1">Personal details are masked in public search results.
+      Add your 10-digit mobile after the ID to confirm ownership.</p>
   </div>
+
+  {% if notice %}
+  <div class="mini-note warn" style="max-width:760px;margin:0 auto 18px">{{ notice }}</div>
+  {% endif %}
 
   {% if q %}
     {% if results %}
@@ -24,17 +30,17 @@
     <div class="report-list" style="max-width:1100px;margin:0 auto">
       {% for r in results %}{{ report_card(r, masked=true) }}{% endfor %}
     </div>
-    {% else %}
+    {% elif not notice %}
     <div class="empty-state" style="max-width:760px;margin:0 auto">
       <h3>No complaint found</h3>
-      <p>Check the tracking number or the mobile number and try again. IDs look like SW-00007.</p>
+      <p>Check the tracking number and try again. IDs look like SW-00007.</p>
       <a class="btn btn-ghost" href="{{ url_for('complaints.report') }}">Report a new problem</a>
     </div>
     {% endif %}
   {% else %}
   <div class="grid grid-3 container" style="max-width:1000px">
     <div class="step"><i>ID</i><strong>By tracking ID</strong><p>Shown after submission and in your notifications.</p></div>
-    <div class="step"><i>PH</i><strong>By mobile number</strong><p>Returns every complaint filed with that number.</p></div>
+    <div class="step"><i>ID+</i><strong>ID + mobile</strong><p>Add your 10-digit number to confirm the report is yours.</p></div>
     <div class="step"><i>Me</i><strong>From your account</strong><p>Sign in for the full timeline, AI panel and feedback.</p></div>
   </div>
   {% endif %}

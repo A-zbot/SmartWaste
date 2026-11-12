@@ -177,8 +177,17 @@ def test_report_submission_flow(client):
     by_id = client.get(f"/track?q={report_id}")
     assert by_id.status_code == 200 and "SW-" in by_id.get_data(as_text=True)
 
+    # A mobile number alone must never list complaints (PII hardening).
     by_mobile = client.get("/track?q=9876543210")
-    assert by_mobile.status_code == 200 and "Market Street" in by_mobile.get_data(as_text=True)
+    mobile_body = by_mobile.get_data(as_text=True)
+    assert by_mobile.status_code == 200
+    assert "Market Street" not in mobile_body
+    assert "mobile number alone" in mobile_body
+
+    # ...but it works as a second factor alongside the complaint number.
+    combined = client.get(f"/track?q={report_id}%209876543210")
+    assert combined.status_code == 200
+    assert "Market Street" in combined.get_data(as_text=True)
 
 
 def test_duplicate_check_requires_csrf_header(client):
@@ -251,12 +260,14 @@ def test_status_update_is_visible_to_citizen(client, admin_credentials):
     client.get("/logout")
 
     assert _admin_login(client, admin_credentials).status_code == 302
-    detail = client.get(f"/admin/complaint/{report_id}").get_data(as_text=True)
-    token = _token(detail, action=f"/admin/complaint/{report_id}/status") or _token(detail)
-    response = client.post(f"/admin/complaint/{report_id}/status",
-                           data={"status": "In Progress", "remark": "Assigned to crew",
-                                 "csrf_token": token})
-    assert response.status_code in (200, 302)
+    # Walk the legal lifecycle: Submitted -> Under Review -> Assigned -> In Progress.
+    for step in ("Under Review", "Assigned", "In Progress"):
+        detail = client.get(f"/admin/complaint/{report_id}").get_data(as_text=True)
+        token = _token(detail, action=f"/admin/complaint/{report_id}/status") or _token(detail)
+        response = client.post(f"/admin/complaint/{report_id}/status",
+                               data={"status": step, "remark": f"moved to {step}",
+                                     "csrf_token": token})
+        assert response.status_code in (200, 302), step
 
     page = client.get(f"/admin/complaint/{report_id}").get_data(as_text=True)
     assert "In Progress" in page
@@ -265,6 +276,7 @@ def test_status_update_is_visible_to_citizen(client, admin_credentials):
     assert _login(client, email, "Passw0rd!").status_code == 302
     citizen_view = client.get(f"/complaint/{report_id}").get_data(as_text=True)
     assert "In Progress" in citizen_view
+    assert "moved to In Progress" in citizen_view  # latest admin remark
 
 
 def test_citizen_blocked_from_admin(client, admin_credentials):

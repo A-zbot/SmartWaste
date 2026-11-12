@@ -128,7 +128,16 @@ def test_form_post_without_csrf_token_is_rejected(client):
         "location": "1 Nowhere Road", "waste_type": "Garbage",
         "priority": "Low", "description": "Attempting to post without a CSRF token.",
     })
-    assert response.status_code == 400
+    # Browsers must be redirected (3xx) so the flashed error is reachable;
+    # the submission itself is rejected either way.
+    assert response.status_code == 302
+    followed = client.get(response.headers["Location"])
+    assert followed.status_code == 200
+    assert "expired" in followed.get_data(as_text=True).lower() or \
+        "untrusted" in followed.get_data(as_text=True).lower()
+    from db import query_one
+    row = query_one("SELECT COUNT(*) AS n FROM reports WHERE name=?", ("No Token",))
+    assert row["n"] == 0
 
 
 def test_json_post_without_csrf_header_is_rejected(client):
@@ -215,7 +224,7 @@ def test_status_change_writes_audit_entry(client, admin_credentials):
     assert token, "no CSRF token available"
     response = client.post(
         f"/admin/complaint/{report_id}/status",
-        data={"status": "Assigned", "remark": "audit trail check",
+        data={"status": "Under Review", "remark": "audit trail check",
               "csrf_token": token},
     )
     assert response.status_code in (200, 302)
@@ -226,4 +235,85 @@ def test_status_change_writes_audit_entry(client, admin_credentials):
         (str(report_id),),
     )
     assert row is not None, "status change must be audited"
-    assert "Assigned" in (row["detail"] or "")
+    assert "Under Review" in (row["detail"] or "")
+
+
+# ---------------------------------------------------------------------------
+# Phase 3 hardening: CSP/HSTS, legacy GET confirmation, e-mail escaping
+# ---------------------------------------------------------------------------
+def test_csp_and_permissions_policy_headers(client):
+    response = client.get("/")
+    csp = response.headers.get("Content-Security-Policy", "")
+    assert "default-src 'self'" in csp
+    assert "frame-ancestors 'self'" in csp
+    assert "object-src 'none'" in csp
+    policy = response.headers.get("Permissions-Policy", "")
+    assert "geolocation=(self)" in policy
+    assert "camera=()" in policy
+
+
+def test_legacy_status_get_requires_csrf_confirmation(client, admin_credentials):
+    """The 1.x GET link must never mutate state directly - it renders a
+    confirmation whose form POSTs (with CSRF) to the real endpoint."""
+    _signup(client)
+    report_id = _submit_report(client)
+    client.get("/logout")
+    assert _login(client, admin_credentials["ADMIN_USERNAME"],
+                  admin_credentials["ADMIN_PASSWORD"]).status_code == 302
+
+    page = client.get(f"/update_status/{report_id}/Under Review")
+    assert page.status_code == 200
+    body = page.get_data(as_text=True)
+    assert "Confirm" in body
+    row = query_one("SELECT status FROM reports WHERE id=?", (report_id,))
+    assert row["status"] != "Under Review", "GET must not change the status"
+
+    token = _token(body)
+    assert token, "confirmation page must expose a CSRF token"
+    response = client.post(
+        f"/admin/complaint/{report_id}/status",
+        data={"status": "Under Review", "csrf_token": token},
+    )
+    assert response.status_code == 302
+    row = query_one("SELECT status FROM reports WHERE id=?", (report_id,))
+    assert row["status"] == "Under Review"
+
+
+def test_legacy_status_get_unknown_status_is_404(client, admin_credentials):
+    assert _login(client, admin_credentials["ADMIN_USERNAME"],
+                  admin_credentials["ADMIN_PASSWORD"]).status_code == 302
+    assert client.get("/update_status/1/NotAStatus").status_code == 404
+
+
+def test_legacy_status_get_requires_admin(client):
+    response = client.get("/update_status/1/Resolved")
+    assert response.status_code == 302
+    assert "/login" in response.headers["Location"]
+
+
+def test_report_email_escapes_hostile_html(monkeypatch):
+    from modules.complaints import email_service
+
+    captured = {}
+    monkeypatch.setattr(email_service, "_smtp_ready", lambda: True)
+    monkeypatch.setattr(email_service, "REPORT_NOTIFY_EMAIL", "admin@example.com")
+    monkeypatch.setattr(
+        email_service, "_deliver",
+        lambda msg: captured.setdefault("msg", msg),
+    )
+
+    hostile = '<script>alert("xss")</script>'
+    email_service.send_report_email(
+        1, hostile, "9876543210", hostile, "Open Garbage", "High",
+        hostile, None, created_at="2026-01-01 00:00:00",
+    )
+    msg = captured.get("msg")
+    assert msg is not None, "e-mail was not built"
+
+    html_part = None
+    for part in msg.walk():
+        if part.get_content_type() == "text/html":
+            html_part = part.get_payload(decode=True).decode("utf-8", "replace")
+    assert html_part is not None
+    assert "<script>" not in html_part, "raw HTML from the citizen must be escaped"
+    assert "&lt;script&gt;" in html_part

@@ -277,7 +277,7 @@ def _send_status_email(to_email, report_id, tracking_id, name, old_status,
 # ---------------------------------------------------------------------------
 def update_status(report_id, new_status, remark="", actor_label="administrator",
                   resolution_image=None, ip=None):
-    from config import COMPLAINT_STATUSES
+    from config import ALLOWED_TRANSITIONS, COMPLAINT_STATUSES
 
     if new_status not in COMPLAINT_STATUSES:
         return {"ok": False, "error": "Unknown status."}
@@ -289,6 +289,15 @@ def update_status(report_id, new_status, remark="", actor_label="administrator",
             return {"ok": False, "error": "Complaint not found."}
         old_status = row["status"]
         status_changed = old_status != new_status
+        if status_changed and new_status not in ALLOWED_TRANSITIONS.get(old_status, []):
+            allowed = ALLOWED_TRANSITIONS.get(old_status, [])
+            return {
+                "ok": False,
+                "error": (
+                    f"Illegal status change: {old_status} -> {new_status}. "
+                    f"Allowed from here: {', '.join(allowed) if allowed else 'none'}."
+                ),
+            }
         owner_email = None
         if status_changed and row["user_id"]:
             owner = con.execute(

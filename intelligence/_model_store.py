@@ -16,6 +16,7 @@ from config import MODEL_DIR
 
 _LOCK = threading.Lock()
 _CACHE = {}
+_REPORT_CACHE = {}  # task -> (mtime, parsed report)
 
 TASKS = ("category", "urgency")
 
@@ -58,13 +59,30 @@ def load_pipeline(task):
 
 
 def load_report(task):
+    """Return the parsed evaluation report for *task* (mtime-cached) or None.
+
+    Reports are re-read from disk on every dashboard call otherwise; the
+    cache key is the file's mtime, so a retrain is picked up immediately.
+    """
     if not is_trained(task):
         return None
+    path = _report_path(task)
     try:
-        with open(_report_path(task), encoding="utf-8") as fh:
-            return json.load(fh)
+        mtime = os.path.getmtime(path)
+    except OSError:
+        return None
+    with _LOCK:
+        hit = _REPORT_CACHE.get(task)
+        if hit is not None and hit[0] == mtime:
+            return hit[1]
+    try:
+        with open(path, encoding="utf-8") as fh:
+            data = json.load(fh)
     except (OSError, ValueError):
         return None
+    with _LOCK:
+        _REPORT_CACHE[task] = (mtime, data)
+    return data
 
 
 def load_meta():
@@ -78,6 +96,7 @@ def load_meta():
 def clear_cache():
     with _LOCK:
         _CACHE.clear()
+        _REPORT_CACHE.clear()
 
 
 def status():

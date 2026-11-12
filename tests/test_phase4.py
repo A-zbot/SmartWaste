@@ -359,7 +359,7 @@ def test_update_status_notifies_owner(client, record_status_email):
     tracking = _tracking_id(report_id)
 
     result = complaint_services.update_status(
-        report_id, "Assigned", remark="Crew dispatched",
+        report_id, "Under Review", remark="Crew dispatched",
     )
     assert result["ok"] is True
 
@@ -369,7 +369,7 @@ def test_update_status_notifies_owner(client, record_status_email):
     assert to_email == email
     assert sent_id == report_id
     assert sent_tracking == tracking
-    assert old == "Submitted" and new == "Assigned"
+    assert old == "Submitted" and new == "Under Review"
     assert remark == "Crew dispatched"
 
 
@@ -406,5 +406,5 @@ def test_status_email_failure_never_breaks_status_change(client, monkeypatch):
         type("t", (), {"Thread": _ImmediateThread}),
     )
 
-    result = complaint_services.update_status(report_id, "In Progress")
+    result = complaint_services.update_status(report_id, "Under Review")
     assert result["ok"] is True            # status change still succeeded
