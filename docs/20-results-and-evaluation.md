@@ -69,9 +69,9 @@ silhouette becomes available automatically once ≥ 2 clusters exist.
 
 | Item | Result |
 |---|---|
-| Automated tests | **73 passed** (6 files) |
+| Automated tests | **150 passed** (14 files) |
 | CI | GitHub Actions, Python 3.12 + 3.14 matrix |
-| Routes | 38 (admin 16, complaints 11, public 5, auth 5, analytics 1) |
+| Routes | 42 (admin 19, complaints 11, auth 6, public 5, analytics 1) |
 | Security headers | present on HTML and PDF responses |
 | CSRF | enforced on form **and** JSON endpoints |
 | Live deployment | https://smartwaste-nyvw.onrender.com/ (Render + gunicorn) |

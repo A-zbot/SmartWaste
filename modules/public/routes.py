@@ -1,11 +1,15 @@
 """Public-facing pages: landing, about, team, contact."""
 
+import re
+
 from flask import Blueprint, flash, redirect, render_template, request, url_for
 
 from db import get_connection
-from security import audit
+from security import audit, rate_limit_hit
 
 bp = Blueprint("public", __name__)
+
+EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 
 def _home_stats():
@@ -58,6 +62,9 @@ def founder_redirect():
 @bp.route("/contact", methods=["GET", "POST"])
 def contact():
     if request.method == "POST":
+        if rate_limit_hit("contact", request.remote_addr or ""):
+            flash("Too many messages from your connection. Please wait a few minutes.", "error")
+            return redirect(url_for("public.contact"))
         name = request.form.get("name", "").strip()
         email = request.form.get("email", "").strip()
         subject = request.form.get("subject", "").strip()
@@ -65,7 +72,10 @@ def contact():
         if not all([name, email, subject, message]):
             flash("Please fill all fields.", "error")
             return redirect(url_for("public.contact"))
-        if "@" not in email or "." not in email.rsplit("@", 1)[-1]:
+        if len(name) > 80 or len(email) > 120 or len(subject) > 150 or len(message) > 3000:
+            flash("One or more fields are too long.", "error")
+            return redirect(url_for("public.contact"))
+        if not EMAIL_RE.match(email):
             flash("Please enter a valid email address.", "error")
             return redirect(url_for("public.contact"))
         con = get_connection()

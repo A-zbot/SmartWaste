@@ -13,6 +13,7 @@ from security import (
     clear_login_failures,
     citizen_required,
     login_blocked,
+    rate_limit_hit,
     record_login_failure,
     verify_admin_credentials,
 )
@@ -91,6 +92,9 @@ def signup():
         return redirect(url_for("public.home"))
 
     if request.method == "POST":
+        if rate_limit_hit("signup", request.remote_addr or ""):
+            flash("Too many signup attempts from your connection. Please wait a few minutes.", "error")
+            return redirect(url_for("auth.signup"))
         name = request.form.get("name", "").strip()
         email = request.form.get("email", "").strip().lower()
         password = request.form.get("password", "")

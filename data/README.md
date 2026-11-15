@@ -74,6 +74,11 @@ Construction Debris 9, Drain & Sewer Waste 9, E-Waste 8, Medical Waste 8.
 
 Holdout urgency split: Emergency 9, High 24, Medium 22, Low 25.
 
+Measured distribution shift: training texts have a median of 26 words
+(range 12-35) while holdout texts have a median of 14 (range 9-18) - the
+holdout is systematically shorter, which is one reason its scores sit below
+the test-split scores.
+
 ## Urgency annotation policy
 
 Urgency is derived from the content of the complaint - it must never be

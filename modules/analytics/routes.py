@@ -19,4 +19,7 @@ def api_overview():
         "charts": payload["charts"],
         "recommendations": payload["recommendations"]["items"],
         "filters": payload["filters"],
+        "feedback_stats": payload["feedback_stats"],
+        "duplicate_links": payload["duplicate_links"],
+        "forecast_summary": payload["forecast_summary"],
     })

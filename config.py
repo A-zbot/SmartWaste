@@ -114,6 +114,18 @@ LEGACY_CATEGORY_MAP = {
     "Construction Waste": "Construction Debris",
 }
 
+# Aliases accepted from the citizen submission form / legacy clients and
+# normalised to a CATEGORIES value before storage. Anything outside
+# CATEGORIES + this map is rejected by complaints.services.validate().
+CATEGORY_ALIASES = {
+    **LEGACY_CATEGORY_MAP,
+    "Garbage": "Open Garbage",
+    "Plastic": "Plastic Waste",
+    "Organic Waste": "Food Waste",
+    "Roadside Garbage": "Open Garbage",
+    "Overflowing Bins": "Open Garbage",
+}
+
 # ---------------------------------------------------------------------------
 # AI / ML
 # ---------------------------------------------------------------------------
@@ -181,3 +193,8 @@ RECOMMENDATION_LIMIT = 8
 # ---------------------------------------------------------------------------
 LOGIN_MAX_ATTEMPTS = int(os.environ.get("LOGIN_MAX_ATTEMPTS", "8"))
 LOGIN_WINDOW_SECONDS = int(os.environ.get("LOGIN_WINDOW_SECONDS", "300"))
+
+# Generic throttle for public write endpoints (report, signup, contact,
+# duplicate-check) - per client IP, in-memory like the login throttle.
+PUBLIC_RATE_MAX = int(os.environ.get("PUBLIC_RATE_MAX", "30"))
+PUBLIC_RATE_WINDOW = int(os.environ.get("PUBLIC_RATE_WINDOW", "300"))

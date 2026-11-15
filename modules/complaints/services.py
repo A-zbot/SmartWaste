@@ -11,13 +11,14 @@ record, so every change is traceable.
 
 import logging
 import os
+import sqlite3
 import threading
 import uuid
 from datetime import datetime, timezone
 
 from werkzeug.utils import secure_filename
 
-from config import ALLOWED_EXTENSIONS, UPLOAD_FOLDER
+from config import ALLOWED_EXTENSIONS, CATEGORIES, CATEGORY_ALIASES, PRIORITIES, UPLOAD_FOLDER
 from db import dumps, get_connection, tracking_id_for
 from intelligence.complaint_classifier import classify
 from intelligence.duplicate_detection import find_duplicates
@@ -30,6 +31,24 @@ from security import audit
 logger = logging.getLogger(__name__)
 
 REQUIRED_FIELDS = ("name", "mobile", "location", "waste_type", "priority", "description")
+
+# Magic-byte signatures so an uploaded file cannot be a script with an image
+# extension (defence in depth on top of the extension allowlist).
+_IMAGE_SIGNATURES = {
+    "png": (b"\x89PNG\r\n\x1a\n",),
+    "jpg": (b"\xff\xd8\xff",),
+    "jpeg": (b"\xff\xd8\xff",),
+    "webp": (b"RIFF",),  # bytes 8-11 must additionally say WEBP
+}
+
+
+def _has_valid_signature(head, ext):
+    signatures = _IMAGE_SIGNATURES.get(ext)
+    if not signatures:
+        return False
+    if ext == "webp":
+        return head[:4] == b"RIFF" and head[8:12] == b"WEBP"
+    return any(head.startswith(sig) for sig in signatures)
 
 
 def utc_now():
@@ -47,6 +66,10 @@ def save_image(file_storage):
     if not allowed_file(file_storage.filename):
         raise ValueError("Only PNG, JPG, JPEG or WEBP images are allowed.")
     ext = secure_filename(file_storage.filename).rsplit(".", 1)[1].lower()
+    head = file_storage.stream.read(16)
+    file_storage.stream.seek(0)
+    if not _has_valid_signature(head, ext):
+        raise ValueError("The uploaded file does not look like a valid PNG, JPG or WEBP image.")
     filename = f"{uuid.uuid4().hex}.{ext}"
     os.makedirs(UPLOAD_FOLDER, exist_ok=True)
     file_storage.save(os.path.join(UPLOAD_FOLDER, filename))
@@ -81,6 +104,12 @@ def validate(form, file_storage=None):
         return "Please describe the problem in at least 15 characters so the model and the field team can act on it."
     if len(description) > 2000:
         return "Description must be under 2000 characters."
+    waste_type = form.get("waste_type", "").strip()
+    if waste_type not in CATEGORIES and waste_type not in CATEGORY_ALIASES:
+        return "Please choose one of the listed waste categories."
+    priority = form.get("priority", "").strip()
+    if priority not in PRIORITIES:
+        return "Please choose one of the listed priority levels."
     if file_storage and file_storage.filename and not allowed_file(file_storage.filename):
         return "Only PNG, JPG, JPEG or WEBP images are allowed."
     return None
@@ -118,7 +147,9 @@ def create_complaint(form, file_storage, user_id=None, ip=None):
     name = form.get("name", "").strip()
     mobile = "".join(ch for ch in form.get("mobile", "") if ch.isdigit())
     location = form.get("location", "").strip()
-    waste_type = form.get("waste_type", "").strip()
+    waste_type = CATEGORY_ALIASES.get(
+        form.get("waste_type", "").strip(), form.get("waste_type", "").strip()
+    )
     priority = form.get("priority", "").strip()
     description = form.get("description", "").strip()
     latitude, longitude = parse_coordinates(form)
@@ -366,7 +397,7 @@ def update_status(report_id, new_status, remark="", actor_label="administrator",
 # ---------------------------------------------------------------------------
 # Feedback
 # ---------------------------------------------------------------------------
-def submit_feedback(report_id, user_id, rating, comment="", ip=None):
+def submit_feedback(report_id, user_id, rating, comment="", mobile=None, ip=None):
     try:
         rating = int(rating)
     except (TypeError, ValueError):
@@ -379,22 +410,36 @@ def submit_feedback(report_id, user_id, rating, comment="", ip=None):
     con = get_connection()
     try:
         row = con.execute(
-            "SELECT status, user_id, tracking_id FROM reports WHERE id=?",
+            "SELECT status, user_id, tracking_id, mobile FROM reports WHERE id=?",
             (report_id,),
         ).fetchone()
         if row is None:
             return {"ok": False, "error": "Complaint not found."}
         if row["status"] != "Resolved":
             return {"ok": False, "error": "Feedback can be given after the complaint is resolved."}
-        if user_id and row["user_id"] and row["user_id"] != user_id:
-            return {"ok": False, "error": "You can only rate your own complaints."}
+        if row["user_id"] is not None:
+            # Owned complaint: only the signed-in owner may rate it.
+            if user_id is None:
+                return {"ok": False, "error": "Please sign in to rate this complaint."}
+            if user_id != row["user_id"]:
+                return {"ok": False, "error": "You can only rate your own complaints."}
+        else:
+            # Anonymous complaint: the submitting mobile acts as a second factor
+            # so strangers cannot occupy the feedback slot.
+            digits = "".join(ch for ch in (mobile or "") if ch.isdigit())
+            stored = "".join(ch for ch in (row["mobile"] or "") if ch.isdigit())
+            if not digits or not stored or digits != stored:
+                return {
+                    "ok": False,
+                    "error": "Please enter the mobile number used when submitting this complaint.",
+                }
         try:
             con.execute(
                 "INSERT INTO feedback (report_id, user_id, rating, comment, created_at) "
                 "VALUES (?, ?, ?, ?, ?)",
                 (report_id, user_id, rating, (comment or "").strip() or None, utc_now()),
             )
-        except Exception:
+        except sqlite3.IntegrityError:
             con.rollback()
             return {"ok": False, "error": "You have already rated this complaint."}
         con.commit()

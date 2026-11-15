@@ -30,7 +30,7 @@ from intelligence.duplicate_detection import find_duplicates
 from intelligence.explainability import explain_prediction
 from intelligence.hotspot_detection import cluster_membership
 from intelligence.priority_predictor import effective_urgency, recommend_action
-from security import citizen_required
+from security import citizen_required, rate_limit_hit
 from modules.complaints import services
 
 bp = Blueprint("complaints", __name__)
@@ -84,6 +84,13 @@ def _load_report(report_id):
 @bp.route("/report", methods=["GET", "POST"])
 def report():
     if request.method == "POST":
+        if rate_limit_hit("report", request.remote_addr or ""):
+            flash(
+                "Too many submissions from your connection. "
+                "Please wait a few minutes and try again.",
+                "error",
+            )
+            return redirect(url_for("complaints.report"))
         user_id = session.get("user_id")
         file_storage = request.files.get("image")
         result = services.create_complaint(
@@ -164,10 +171,14 @@ def submitted(report_id):
 @bp.route("/report/duplicate-check", methods=["POST"])
 def duplicate_check():
     """AJAX endpoint used by the complaint form before submission."""
+    if rate_limit_hit("dupcheck", request.remote_addr or ""):
+        return jsonify({"ok": False, "error": "Too many checks from your connection - please wait a moment."}), 429
     payload = request.get_json(silent=True) or {}
     text = (payload.get("text") or "").strip()
     if len(text) < 15:
         return jsonify({"ok": False, "error": "Describe the problem (15+ characters) to check for duplicates."})
+    if len(text) > 5000:
+        text = text[:5000]
     try:
         latitude = float(payload.get("latitude")) if payload.get("latitude") not in (None, "") else None
         longitude = float(payload.get("longitude")) if payload.get("longitude") not in (None, "") else None
@@ -336,6 +347,11 @@ def detail(report_id):
                 report_row["priority"], report_row["ai_urgency"]
             ),
             can_manage=session.get("admin") is True,
+            can_rate=(
+                report_row["user_id"] is None
+                or (session.get("user_id") is not None
+                    and session["user_id"] == report_row["user_id"])
+            ),
             unread=_unread(),
         )
     finally:
@@ -379,6 +395,7 @@ def submit_feedback(report_id):
     result = services.submit_feedback(
         report_id, user_id,
         request.form.get("rating"), request.form.get("comment", ""),
+        mobile=request.form.get("mobile", ""),
         ip=request.remote_addr,
     )
     if not result.get("ok"):

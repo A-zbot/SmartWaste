@@ -168,11 +168,35 @@ Order: **0 → 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8** (security early to 
 | 5 | duplicate link/unlink workflow + debounced auto-check + badges/notes — 6 new tests |
 | 6 | duplicate matrix cache (content-hash key), forecast TTL memoization, mtime report cache, pagination (queue/inbox/audit/citizen history), `evaluation.py` `candidates`→`models` fix — 10 new tests |
 | 7 | `POST /profile/update` (name/email, validation, uniqueness, session refresh, audit) — 5 new tests *(plan named the route `/profile/edit`; implemented as `/profile/update`)* |
-| 8 | suite **115 passed** on Python 3.14.7 (CI matrix covers 3.12/3.14); scripted end-to-end journey (submit → track → AI review → legal status flow → resolve → feedback → both PDFs) all green; `compileall` clean; `README.md` rewritten; `docs/17`, `docs/19`, `docs/21` updated |
+| 8 | suite **115 passed** on Python 3.14.7 (CI matrix covers 3.12/3.14); scripted end-to-end journey (submit → track → AI review → legal status flow → resolve → feedback → both PDFs) all green; `compileall` clean; `README.md` rewritten; `docs/17`, `docs/19`, `docs/21` updated *(later grown to **150 passed** by the master-prompt upgrade — see `docs/TESTING_REPORT.md`)* |
 
 Final verification commands:
 
 ```powershell
-python -m pytest tests/ -q        # 115 passed
+python -m pytest tests/ -q        # 150 passed (master-prompt upgrade; 115 at Phase 8)
 python -m compileall app.py config.py db.py security.py modules intelligence experiments scripts tests
 ```
+
+---
+
+## Post-plan: master-prompt upgrade (10 phases) ✅
+
+Executed after Phase 8 against commit `ea26a09`; plan and details in
+`docs/PROJECT_AUDIT.md` (findings H1–H2, M1–M8, L1–L10 with §7 remediation
+status) and `docs/TESTING_REPORT.md` (requirement→test map).
+
+| # | Phase | Outcome |
+|---|---|---|
+| 1 | Audit | `docs/PROJECT_AUDIT.md` — severity-ranked findings, files-to-modify, remediation order |
+| 2 | Data/ML validation | `docs/DATASET_DOCUMENTATION.md`, `docs/ML_EVALUATION.md` (measured metrics only); holdout length shift documented; `ANNOTATION.md` fixed |
+| 3–4 | AI + complaint intelligence fixes | duplicate-panel XSS escaping (H1); taxonomy allowlist + aliases, e-mail CRLF, magic-byte uploads (H2/M8); feedback authorisation (M1); corrected-vs-confirmed copy, admin identity (M3/M4) |
+| 5 | Forecasting | honest insufficient/baseline-only paths unit-tested; forecast panel on dashboard |
+| 6 | Admin feedback | append-only `prediction_feedback` table (schema v5) with model version; dashboard statistics (M5) |
+| 7 | Dashboard | Pending KPI + forecast / duplicate-links / administrator-feedback panels (M6) |
+| 8 | Security | public rate limits (`PUBLIC_RATE_MAX/WINDOW`), `Cache-Control: no-store`, config placeholders (M2/M7/L6) |
+| 9 | Tests | `test_ml_units.py` (17) + `test_feedback_flow.py` (18) → **150 passed**; `docs/TESTING_REPORT.md` |
+| 10 | Docs | `PROJECT_ARCHITECTURE.md`, `DATABASE_DESIGN.md`, `VIVA_PREPARATION.md`; stale counts/claims corrected across the doc set; README/docs indexes updated |
+
+Out-of-scope and accepted-risk items (L1, L7–L10) are recorded in
+`docs/PROJECT_AUDIT.md` §7 rather than silently skipped. Real-world dataset
+validation stays **pending by design**.

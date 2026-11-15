@@ -50,6 +50,9 @@
   <div class="kpi kpi-info"><div class="kpi-label">Open complaints</div>
     <div class="kpi-value" id="kpiOpen">{{ kpis.open }}</div>
     <div class="kpi-sub">avg resolution <span id="kpiAvgRes">{% if kpis.avg_resolution_hours is not none %}avg {{ kpis.avg_resolution_hours }} h across {{ kpis.resolved_with_timestamp }} resolved{% else %}no resolved complaints with timestamps yet{% endif %}</span></div></div>
+  <div class="kpi"><div class="kpi-label">Pending</div>
+    <div class="kpi-value" id="kpiPending">{{ kpis.pending }}</div>
+    <div class="kpi-sub">submitted, not yet reviewed</div></div>
   <div class="kpi kpi-danger"><div class="kpi-label">Urgent &amp; open</div>
     <div class="kpi-value" id="kpiUrgent">{{ kpis.urgent_open }}</div><div class="kpi-sub">High / Emergency priority</div></div>
   <div class="kpi"><div class="kpi-label">Resolved</div>
@@ -72,6 +75,7 @@
   <span>Missing coordinates: <b>{{ kpis.missing_geo }}</b></span>
   <span>Rejected: <b>{{ kpis.rejected }}</b></span>
   <span>Unresolved inside clusters: <b>{{ kpis.unresolved_in_clusters }}</b></span>
+  <span>Duplicate-linked: <b>{{ kpis.duplicate_linked }}</b></span>
   <span>Contact messages: <b>{{ messages_total }}</b></span>
   <span>Model: <b>{{ model_status.tasks.category.best_model or 'not trained' }}</b></span>
 </div>
@@ -101,6 +105,80 @@
   <div class="chart-card">
     <div class="chart-head"><div><h4>Monthly trend</h4><p class="chart-sub">Last 12 months</p></div></div>
     <div class="chart-box"><canvas id="chartMonthly"></canvas></div>
+  </div>
+</div>
+
+<div class="grid grid-3" style="align-items:start">
+  <div class="chart-card">
+    <div class="chart-head"><div><h4>Forecast (next {{ forecast_summary.horizon or 7 }} days)</h4>
+      <p class="chart-sub">Chronological backtest · MAE/RMSE on the forecast page</p></div>
+      <a class="chip-btn neutral" href="{{ url_for('admin.analytics') }}">Details →</a></div>
+    {% if forecast_summary.available %}
+    <div class="kv">
+      <dt>Expected volume</dt><dd><b>{{ forecast_summary.total }}</b> complaints over {{ forecast_summary.horizon }} days</dd>
+      <dt>Peak day</dt><dd>{{ forecast_summary.peak_date or '—' }} ({{ forecast_summary.peak_value }})</dd>
+      <dt>Trend</dt><dd>{{ forecast_summary.trend }}</dd>
+      <dt>Method</dt><dd>{{ 'Random Forest + baselines' if forecast_summary.status == 'ok' else 'Baseline only (insufficient history for ML)' }}</dd>
+    </div>
+    {% if forecast_summary.data_note %}<p class="muted" style="font-size:12px">{{ forecast_summary.data_note }}</p>{% endif %}
+    {% else %}
+    <div class="mini-note">{{ forecast_summary.message or 'Not enough complaint history to forecast yet - no numbers are shown rather than a fabricated estimate.' }}</div>
+    {% endif %}
+  </div>
+
+  <div class="chart-card">
+    <div class="chart-head"><div><h4>Duplicate complaints</h4>
+      <p class="chart-sub">Recorded links · live similarity runs on each detail page</p></div>
+      <span class="badge badge-warn">{{ duplicate_links.total }} linked</span></div>
+    {% if duplicate_links.rows %}
+    <div class="table-scroll">
+      <table class="data">
+        <thead><tr><th>Tracking</th><th>Duplicate of</th><th>Status</th></tr></thead>
+        <tbody>
+          {% for d in duplicate_links.rows %}
+          <tr>
+            <td class="mono"><a href="{{ url_for('admin.complaint_detail', report_id=d.id) }}">{{ d.tracking_id }}</a></td>
+            <td class="mono">{{ d.target_tracking_id }}</td>
+            <td><span class="badge status-{{ d.status|status_class }}">{{ d.status }}</span></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="mini-note">No complaints are recorded as duplicates yet. Open a complaint to check for potential duplicates or link one manually.</div>
+    {% endif %}
+  </div>
+
+  <div class="chart-card">
+    <div class="chart-head"><div><h4>Administrator feedback</h4>
+      <p class="chart-sub">Corrections of AI predictions · model monitoring</p></div></div>
+    <div class="kv">
+      <dt>Reviews recorded</dt><dd><b>{{ feedback_stats.reviews }}</b>
+        {% if feedback_stats.legacy_reviews %}<span class="muted">(+{{ feedback_stats.legacy_reviews }} before logging)</span>{% endif %}</dd>
+      <dt>Corrections</dt><dd>{{ feedback_stats.corrections }} ({{ feedback_stats.correction_rate }}% of reviews)</dd>
+      <dt>Confirmations</dt><dd>{{ feedback_stats.confirmations }}</dd>
+      <dt>Complaints reviewed</dt><dd>{{ feedback_stats.reports_reviewed }}</dd>
+    </div>
+    {% if feedback_stats.reviews %}
+    <div class="table-scroll mt-2">
+      <table class="data">
+        <thead><tr><th>Tracking</th><th>Outcome</th><th>Reviewed</th></tr></thead>
+        <tbody>
+          {% for f in feedback_stats.recent %}
+          <tr>
+            <td class="mono"><a href="{{ url_for('admin.complaint_detail', report_id=f.report_id) }}">{{ f.tracking_id }}</a></td>
+            <td>{% if f.was_correction %}<span class="badge badge-warn">corrected → {{ f.corrected_category }}</span>
+                {% else %}<span class="badge badge-ai">confirmed {{ f.corrected_category }}</span>{% endif %}</td>
+            <td class="nowrap muted">{{ f.created_at|dt }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="mini-note">No AI reviews yet. Confirm or correct a prediction from any complaint's AI panel.</div>
+    {% endif %}
   </div>
 </div>
 

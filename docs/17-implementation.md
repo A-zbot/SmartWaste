@@ -24,7 +24,7 @@ SmartWaste/
 ├── experiments/           # evaluation.py, RESULTS.md
 ├── data/                  # seeded corpora, duplicate pairs, README, ANNOTATION
 ├── scripts/               # generate_dataset.py, build_duplicate_pairs.py, train_models.py
-├── tests/                 # 115 tests in 12 files
+├── tests/                 # 150 tests in 14 files
 ├── templates/ static/     # UI (citizen + admin bases)
 ├── docs/                  # this documentation set
 ├── .github/workflows/ci.yml

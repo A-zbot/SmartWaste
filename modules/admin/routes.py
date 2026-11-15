@@ -20,6 +20,7 @@ from flask import (
 )
 
 from config import (
+    ADMIN_USERNAME,
     ALLOWED_TRANSITIONS,
     CATEGORIES,
     COMPLAINT_STATUSES,
@@ -52,6 +53,11 @@ bp = Blueprint("admin", __name__)
 _retrain = {"running": False, "started_at": None, "finished_at": None, "error": None}
 
 
+def _admin_label():
+    """Identity recorded in history/audit rows - the configured admin account."""
+    return ADMIN_USERNAME or "administrator"
+
+
 # ---------------------------------------------------------------------------
 # Dashboard
 # ---------------------------------------------------------------------------
@@ -69,6 +75,9 @@ def dashboard():
         recommendations=payload["recommendations"],
         model_status=payload["model_status"],
         areas=payload["areas"],
+        feedback_stats=payload["feedback_stats"],
+        duplicate_links=payload["duplicate_links"],
+        forecast_summary=payload["forecast_summary"],
         messages_total=messages,
         categories=CATEGORIES,
         statuses=COMPLAINT_STATUSES,
@@ -264,11 +273,20 @@ def ai_review(report_id):
         if report is None:
             abort(404)
 
+        prediction = con.execute(
+            "SELECT model_name, model_version FROM predictions "
+            "WHERE report_id=? ORDER BY id DESC LIMIT 1",
+            (report_id,),
+        ).fetchone()
+        admin_label = _admin_label()
+        now = complaint_services.utc_now()
+
         changed = final_category != report["ai_category"]
+        urgency_changed = bool(final_urgency) and final_urgency != report["ai_urgency"]
         parts = [f"category {'corrected to' if changed else 'confirmed as'} "
                  f"'{final_category}' (model: {report['ai_category'] or 'unavailable'})"]
         if final_urgency:
-            parts.append(f"priority {'corrected to' if final_urgency != report['ai_urgency'] else 'confirmed as'} "
+            parts.append(f"priority {'corrected to' if urgency_changed else 'confirmed as'} "
                          f"'{final_urgency}' (model: {report['ai_urgency'] or 'unavailable'})")
         if note:
             parts.append(note)
@@ -282,21 +300,58 @@ def ai_review(report_id):
                 final_category,
                 final_urgency or None,
                 note or None,
-                complaint_services.utc_now(),
-                "administrator",
-                complaint_services.utc_now(),
+                now,
+                admin_label,
+                now,
                 report_id,
+            ),
+        )
+        # Append-only model-monitoring record: original predictions preserved,
+        # model version captured as it stood at review time (Phase 6).
+        con.execute(
+            "INSERT INTO prediction_feedback "
+            "(report_id, model_name, model_version, original_category, "
+            " corrected_category, original_urgency, corrected_urgency, "
+            " was_correction, admin_label, note, created_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (
+                report_id,
+                prediction["model_name"] if prediction else None,
+                prediction["model_version"] if prediction else None,
+                report["ai_category"],
+                final_category,
+                report["ai_urgency"],
+                final_urgency or None,
+                1 if (changed or urgency_changed) else 0,
+                admin_label,
+                note or None,
+                now,
             ),
         )
         complaint_services.add_history(
             con, report_id, report["status"], report["status"], remark,
-            actor_type="admin", actor_label="administrator",
+            actor_type="admin", actor_label=admin_label,
         )
+        if changed:
+            citizen_message = (
+                f"Our team reviewed the AI classification for {report['tracking_id']} "
+                f"and corrected it to '{final_category}'"
+                + (f" (the model suggested '{report['ai_category']}')"
+                   if report["ai_category"] else "")
+                + "."
+            )
+        else:
+            citizen_message = (
+                f"Our team reviewed the AI classification for {report['tracking_id']} "
+                f"and confirmed it as '{final_category}'."
+            )
+        if urgency_changed:
+            citizen_message += f" Priority is now '{final_urgency}'."
         complaint_services.notify_user(
             con, report["user_id"], report_id,
-            "Complaint classification verified",
-            f"Our team reviewed the AI classification for {report['tracking_id']} "
-            f"and confirmed it as '{final_category}'.",
+            "Complaint classification corrected" if changed
+            else "Complaint classification verified",
+            citizen_message,
             link=url_for("complaints.detail", report_id=report_id),
         )
         con.commit()
@@ -305,10 +360,12 @@ def ai_review(report_id):
 
     audit(
         "complaint.ai_review", entity="report", entity_id=report_id,
-        detail=remark, actor_type="admin", ip=request.remote_addr,
+        detail=remark, actor_type="admin", actor_label=admin_label,
+        ip=request.remote_addr,
     )
     flash(
-        f"AI review saved: {report['tracking_id']} verified as '{final_category}'.",
+        f"AI review saved: {report['tracking_id']} "
+        f"{'corrected to' if changed else 'verified as'} '{final_category}'.",
         "success",
     )
     return redirect(url_for("admin.complaint_detail", report_id=report_id))
@@ -357,7 +414,7 @@ def link_duplicate(report_id):
         complaint_services.add_history(
             con, report_id, report["status"], report["status"],
             f"Linked as duplicate of {target['tracking_id']}",
-            actor_type="admin", actor_label="administrator",
+            actor_type="admin", actor_label=_admin_label(),
         )
         complaint_services.notify_user(
             con, report["user_id"], report_id,
@@ -410,7 +467,7 @@ def clear_duplicate(report_id):
         complaint_services.add_history(
             con, report_id, report["status"], report["status"],
             "Duplicate link removed",
-            actor_type="admin", actor_label="administrator",
+            actor_type="admin", actor_label=_admin_label(),
         )
         con.commit()
     finally:
@@ -432,7 +489,7 @@ def update_status(report_id):
     resolution_image = request.files.get("resolution_image")
     result = complaint_services.update_status(
         report_id, new_status, remark=remark,
-        actor_label="administrator", resolution_image=resolution_image,
+        actor_label=_admin_label(), resolution_image=resolution_image,
         ip=request.remote_addr,
     )
     if not result.get("ok"):

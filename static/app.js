@@ -115,22 +115,23 @@ function checkDuplicates() {
     .then((data) => {
       panel.setAttribute('data-checked', '1');
       if (!data.ok) {
-        if (meta) meta.innerHTML = `<span class="dup-loading">${data.error || 'Check unavailable.'}</span>`;
+        if (meta) meta.innerHTML = `<span class="dup-loading">${escapeHtml(data.error || 'Check unavailable.')}</span>`;
         return;
       }
-      let html = `<div class="dup-loading">Compared against ${data.checked} recent complaint(s) in the last ${data.window_days} days.</div>`;
+      let html = `<div class="dup-loading">Compared against ${escapeHtml(data.checked)} recent complaint(s) in the last ${escapeHtml(data.window_days)} days.</div>`;
       if (data.matches && data.matches.length) {
         html += '<div class="dup-list">';
         data.matches.forEach((m) => {
-          const dist = m.distance_km === null ? 'distance unknown' : `${m.distance_km} km away`;
+          const dist = m.distance_km === null ? 'distance unknown' : `${escapeHtml(m.distance_km)} km away`;
+          const statusClass = String(m.status || '').toLowerCase().replace(/[^a-z0-9]+/g, '-');
           html += `<div class="dup-item ${m.is_likely ? 'likely' : ''}">
-            <b>${m.tracking_id}</b> &middot; ${m.category} &middot;
-            <span class="badge status-${(m.status || '').toLowerCase().replace(/\s+/g, '-')}">${m.status}</span>
+            <b>${escapeHtml(m.tracking_id)}</b> &middot; ${escapeHtml(m.category)} &middot;
+            <span class="badge status-${escapeHtml(statusClass)}">${escapeHtml(m.status)}</span>
             <div class="dup-meta">
               <span>Similarity ${(m.similarity * 100).toFixed(0)}%</span>
               <span>${dist}</span>
-              <span>Submitted ${m.created_at}</span>
-              <span>${m.location}</span>
+              <span>Submitted ${escapeHtml(m.created_at)}</span>
+              <span>${escapeHtml(m.location)}</span>
               ${m.is_likely ? '<span><b>Likely duplicate</b></span>' : ''}
             </div></div>`;
         });
@@ -139,7 +140,7 @@ function checkDuplicates() {
         html += '<div class="dup-ok">No similar complaints found nearby. Your report looks unique.</div>';
       }
       if (data.warnings && data.warnings.length) {
-        html += `<div class="dup-loading">${data.warnings.join(' ')}</div>`;
+        html += `<div class="dup-loading">${escapeHtml(data.warnings.join(' '))}</div>`;
       }
       output.innerHTML = html;
     })
@@ -337,7 +338,8 @@ function refreshDashboard() {
 
 function updateKpis(k) {
   const map = {
-    kpiTotal: k.total, kpiOpen: k.open, kpiUrgent: k.urgent_open, kpiResolved: k.resolved,
+    kpiTotal: k.total, kpiOpen: k.open, kpiPending: k.pending,
+    kpiUrgent: k.urgent_open, kpiResolved: k.resolved,
     kpiReview: k.needs_review, kpiResolution: k.resolution_pct + '%',
     kpiHotspots: k.hotspots, kpiRecurring: k.recurring_locations
   };

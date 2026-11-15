@@ -19,6 +19,8 @@ from config import (
     ADMIN_USERNAME,
     LOGIN_MAX_ATTEMPTS,
     LOGIN_WINDOW_SECONDS,
+    PUBLIC_RATE_MAX,
+    PUBLIC_RATE_WINDOW,
 )
 
 CSRF_SESSION_KEY = "csrf_token"
@@ -125,6 +127,7 @@ def _prune(bucket, now):
 
 def login_blocked(identifier):
     now = time.time()
+    identifier = str(identifier)[:64]
     with _lock:
         bucket = _failures.get(identifier)
         if not bucket:
@@ -135,6 +138,7 @@ def login_blocked(identifier):
 
 def record_login_failure(identifier):
     now = time.time()
+    identifier = str(identifier)[:64]
     with _lock:
         bucket = _failures.setdefault(identifier, [])
         _prune(bucket, now)
@@ -143,7 +147,40 @@ def record_login_failure(identifier):
 
 def clear_login_failures(identifier):
     with _lock:
-        _failures.pop(identifier, None)
+        _failures.pop(str(identifier)[:64], None)
+
+
+# ---------------------------------------------------------------------------
+# Generic public-endpoint throttle (per IP, in-memory, per-process)
+# ---------------------------------------------------------------------------
+_public_hits = {}
+_PUBLIC_KEY_LIMIT = 4096
+
+
+def rate_limit_hit(bucket, identifier, max_attempts=None, window=None):
+    """Record one attempt for ``bucket:identifier``; True when over the limit.
+
+    Identifiers are truncated so a hostile client cannot grow the dict with
+    unbounded keys; expired buckets are pruned on every call and the whole
+    table is swept when it grows past ``_PUBLIC_KEY_LIMIT``.
+    """
+    max_attempts = PUBLIC_RATE_MAX if max_attempts is None else max_attempts
+    window = PUBLIC_RATE_WINDOW if window is None else window
+    key = f"{bucket}:{str(identifier)[:64]}"
+    now = time.monotonic()
+    with _lock:
+        hits = [t for t in _public_hits.get(key, ()) if now - t <= window]
+        if len(hits) >= max_attempts:
+            _public_hits[key] = hits
+            return True
+        hits.append(now)
+        _public_hits[key] = hits
+        if len(_public_hits) > _PUBLIC_KEY_LIMIT:
+            for existing in list(_public_hits):
+                stamps = _public_hits[existing]
+                if not stamps or now - stamps[-1] > window:
+                    _public_hits.pop(existing, None)
+        return False
 
 
 # ---------------------------------------------------------------------------

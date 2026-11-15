@@ -93,6 +93,15 @@ def _install_security_headers(app):
                 "Strict-Transport-Security",
                 "max-age=31536000; includeSubDomains",
             )
+        # Never let browsers or shared proxies cache PII-bearing pages
+        # (profile, complaint detail, PDFs) - static assets keep their own
+        # caching and are excluded by path.
+        content_type = response.headers.get("Content-Type", "")
+        if not request.path.startswith("/static") and (
+            content_type.startswith("text/html")
+            or content_type.startswith("application/pdf")
+        ):
+            response.headers.setdefault("Cache-Control", "no-store")
         return response
 
 

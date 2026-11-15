@@ -54,7 +54,8 @@ handling, geospatial hotspots, demand forecasting and a full audit trail.
   link/unlink-as-duplicate control with badges for admins and citizens
 - Hotspot map (DBSCAN clustering over geocoded complaints) with explicit
   clustering controls
-- 30-day demand forecasting with seasonal-naive and moving-average baselines,
+- Demand forecasting (7-day default horizon, configurable up to 30 days) with
+  seasonal-naive and moving-average baselines,
   a Random Forest model where history allows, measured test error bands, and
   honest "insufficient data" states instead of fabricated forecasts
 - Model evaluation page (cross-validation comparison, confusion matrices,
@@ -107,9 +108,12 @@ python -m pytest tests/ -q
 ```
 
 The suite covers the full stack: submission and tracking, the status state
-machine, AI review, duplicate linking, security (CSRF, headers, access
-control), pagination, forecasting/duplicate/evaluation honesty checks, and
-the public pages. **115 tests, all passing.**
+machine, AI review, duplicate linking, citizen feedback authorisation,
+upload validation, dashboard panels, ML unit behaviour (preprocessing,
+prediction fallbacks, forecast honesty), security (CSRF, headers, rate
+limits, access control), pagination, forecasting/duplicate/evaluation
+honesty checks, and the public pages. **150 tests, all passing** — see
+`docs/TESTING_REPORT.md` for the requirement-to-test map.
 
 ## Configuration
 
@@ -171,6 +175,13 @@ blocks a report submission.
 ## Documentation
 
 - `docs/README.md` - index of the full documentation set
+- `docs/PROJECT_AUDIT.md` - severity-ranked audit of the current codebase
+- `docs/ML_EVALUATION.md` / `docs/DATASET_DOCUMENTATION.md` - measured
+  metrics and synthetic-data provenance
+- `docs/TESTING_REPORT.md` - test inventory and requirement coverage
+- `docs/PROJECT_ARCHITECTURE.md` / `docs/DATABASE_DESIGN.md` - engineering
+  reference for layers and schema v5
+- `docs/VIVA_PREPARATION.md` - viva Q&A and demo script
 - `AUDIT_REPORT.md` - Phase 0 codebase audit findings
 - `DEVELOPMENT_PLAN.md` - phased hardening plan (Phases 0-8, all completed)
 - `data/README.md` - synthetic data disclosure and schema

@@ -30,7 +30,7 @@
    status changes (never blocking the transaction).
 10. Harden the application: CSRF protection, session-cookie flags, login
    throttling, security headers, constant-time admin credential checks.
-11. Achieve high automated-test coverage of the critical paths (73 tests)
+11. Achieve high automated-test coverage of the critical paths (150 tests)
     and run them continuously through GitHub Actions.
 12. Document the system to MCA major-project standard: architecture, DFDs,
    ER model, algorithms, testing, results, deployment and future scope.

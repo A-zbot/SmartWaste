@@ -56,7 +56,7 @@ verified by reading the code — no feature was assumed present or absent.
 - Flask app factory + 5 blueprints (`app.py`, `modules/__init__.py`), gunicorn/Render deployment (`Procfile`, `render.yaml`).
 - SQLite (WAL, FK on) with idempotent DDL, forward-only column upgrades, legacy normalization, history backfill (`db.py`).
 - CSRF (session token, HMAC compare), security headers, secure cookie flags, login throttling, audit logging (`security.py`).
-- 73 tests across 6 files + GitHub Actions CI (Python 3.12/3.14).
+- 73 tests across 6 files at the Phase-0 baseline (150 across 14 files after the master-prompt upgrade) + GitHub Actions CI (Python 3.12/3.14).
 - 24-document MCA documentation set with Mermaid diagrams (`docs/`).
 
 ---
@@ -204,4 +204,4 @@ All phases completed; final state verified on Python 3.14.7:
 | Other in-scope code-quality items (§6) | addressed per `DEVELOPMENT_PLAN.md` completion table; out-of-scope items noted as accepted |
 | §7 missing functionality (AI correction, priority explanations, duplicate link, profile edit, enforced lifecycle) | **Closed** — phases 1, 2, 4, 5, 7 |
 | Issue 9 (README describes SmartWaste 1.x) | **Fixed** — phase 8 rewrote `README.md` |
-| Final suite | **115 passed** (`python -m pytest tests/ -q`), `compileall` clean, scripted end-to-end journey (submit → track → AI review → status flow → resolve → feedback → PDFs) green |
+| Final suite | **115 passed** at Phase-8 completion (**150 passed** after the master-prompt upgrade — `docs/TESTING_REPORT.md`), `compileall` clean, scripted end-to-end journey (submit → track → AI review → status flow → resolve → feedback → PDFs) green |

@@ -12,7 +12,7 @@ services:
       - key: ADMIN_PASSWORD
         sync: false
       - key: REPORT_NOTIFY_EMAIL
-        value: garvitagarwall.army@gmail.com
+        sync: false
       - key: SMTP_HOST
         value: smtp.gmail.com
       - key: SMTP_PORT

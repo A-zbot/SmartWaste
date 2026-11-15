@@ -27,7 +27,7 @@ text,category,urgency,source
 ```
 
 - `category` - one of the 8 taxonomy values in `config.CATEGORIES`
-  (e.g. `Open Garbage`, `Construction Debris`, `Recyclable`, `E-Waste`, ...)
+  (e.g. `Open Garbage`, `Construction Debris`, `Plastic Waste`, `E-Waste`, ...)
 - `urgency` - one of `config.PRIORITIES` + `Emergency`
   (`Low`, `Medium`, `High`, `Emergency`)
 - `source` - provenance tag written by whoever produced the row

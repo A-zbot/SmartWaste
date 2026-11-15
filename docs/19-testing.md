@@ -9,27 +9,31 @@ markers) rather than pixel-wise. All tests run against a temporary SQLite
 database (`DATABASE_PATH` pointed at a temp file before import), so a run
 never touches the developer's `waste.db`.
 
-## 19.2 Suite Breakdown (115 tests)
+## 19.2 Suite Breakdown (150 tests)
 
 | File | Tests | Covers |
 |---|---|---|
-| `test_smoke.py` | 13 | app creation, home/login 200, DB init, CSRF on forms, signup/login/logout, report submission, tracking, feedback, chart data endpoint |
-| `test_regressions.py` | 10 | historical defects: Chart.js linkage, `chartsAvailable()` guards, duplicate-detection rules, preprocessing fallback, forecasting guards, status vocab |
+| `test_smoke.py` | 13 | app creation, home/login 200, DB init, CSRF on forms, signup/login/logout, report submission, tracking, chart data endpoint |
+| `test_regressions.py` | 10 | historical defects: Chart.js linkage, `chartsAvailable()` guards, duplicate-detection rules, forecasting guards, status vocab |
 | `test_evaluation.py` | 17 | evaluation harness: pair CSV integrity, `pair_similarity`/`score_duplicate` behaviour, threshold monotonicity, report JSON schema, silhouette helper, honest insufficient-data paths |
+| `test_feedback_flow.py` | 18 | citizen feedback authorisation (owner/anonymous-mobile/bounds), `prediction_feedback` logging, dashboard panels, upload extension + magic-byte rejection, legacy alias normalisation, XSS source guard, `Cache-Control: no-store` |
+| `test_ml_units.py` | 17 | text preprocessing (determinism, markup/URL stripping, NLTK-free tokenizer fallback), `classify()`/`predict_urgency()` incl. model-missing fallback, forecast insufficient/baseline-only paths, `rate_limit_hit()` unit, e-mail CRLF sanitisation, image magic bytes, taxonomy allowlist |
 | `test_phase4.py` | 16 | PDF generation (both audiences, masking, safe text), route access control, audit on admin PDF, status-change e-mail hook (background, best-effort), `_smtp_ready` semantics |
 | `test_security.py` | 15 | security headers (HTML + PDF, CSP, Permissions-Policy, prod-only HSTS), form & JSON CSRF rejection, browser CSRF redirect, legacy status GET confirmation, session-cookie flags, admin access control, login throttling (unit), constant-time credential check, status-change audit trail |
 | `test_frontend.py` | 7 | template `url_for` integrity, `img alt` coverage, dead internal anchors, `lang`/viewport/skip-link/`main` landmarks, CSS guarantees (focus-visible, reduced-motion) |
-| `test_ai_review.py` | 6 | admin AI-correction workflow: columns, route, immutability of original AI output, badges, PDF/history surfacing |
+| `test_ai_review.py` | 6 | admin AI-correction workflow: columns, route, immutability of original AI output, badges, PDF/history surfacing, corrected-vs-confirmed notification copy |
 | `test_duplicate_link.py` | 6 | debounced auto duplicate-check hook, link/unlink-as-duplicate, badges and citizen notes, audit entries |
 | `test_lifecycle.py` | 7 | enforced status state machine: legal walk, illegal jumps rejected, appeal/reopen paths, same-status remarks |
 | `test_performance.py` | 10 | duplicate matrix caching, forecast memoization (TTL + invalidation), mtime report cache, pagination of queue/inbox/audit/citizen history with clamping, filter-scoped audit totals |
 | `test_profile.py` | 5 | profile editing: persistence, session refresh, audit, duplicate email rejection, validation, login/CSRF gates |
 | `test_priority_explanation.py` | 3 | "why this priority" context cards for citizens and admins, system-priority rows |
 
+Requirement-to-test mapping lives in `docs/TESTING_REPORT.md`.
+
 Run:
 
 ```powershell
-python -m pytest tests/ -q        # 115 passed
+python -m pytest tests/ -q        # 150 passed
 ```
 
 ## 19.3 Continuous Integration
@@ -57,7 +61,7 @@ A red build blocks the merge; the badge lives in the repository README.
 
 ## 19.5 Quality Gates
 
-1. Full pytest suite green (115/115).
+1. Full pytest suite green (150/150).
 2. `python -m compileall` clean.
 3. No metric in docs or UI that is not present in a machine-readable report
    (`models/*_report.json`, `models/duplicate_report.json`,

@@ -6,6 +6,7 @@ continues normally, exactly like SmartWaste 1.x.
 """
 
 import logging
+import re
 import smtplib
 import ssl
 from datetime import datetime, timezone
@@ -31,6 +32,11 @@ logger = logging.getLogger(__name__)
 
 def _smtp_ready():
     return bool(SMTP_USER and SMTP_PASSWORD)
+
+
+def _header_safe(value):
+    """Strip CR/LF so interpolated values can never inject e-mail headers."""
+    return re.sub(r"[\r\n]+", " ", str(value)).strip()
 
 
 def _deliver(msg):
@@ -93,7 +99,7 @@ def send_report_email(report_id, name, mobile, location, waste_type,
 </div>"""
 
     msg = MIMEMultipart("mixed")
-    msg["Subject"] = f"[SmartWaste] New complaint #{ref} - {priority} priority"
+    msg["Subject"] = f"[SmartWaste] New complaint #{_header_safe(ref)} - {_header_safe(priority)} priority"
     msg["From"] = SMTP_FROM
     msg["To"] = REPORT_NOTIFY_EMAIL
     msg.attach(MIMEText(text_body, "plain", "utf-8"))
@@ -156,7 +162,7 @@ def send_status_email(to_email, report_id, tracking_id, name, old_status,
 </div>"""
 
     msg = MIMEMultipart("alternative")
-    msg["Subject"] = f"[SmartWaste] {ref} is now {new_status}"
+    msg["Subject"] = f"[SmartWaste] {_header_safe(ref)} is now {_header_safe(new_status)}"
     msg["From"] = SMTP_FROM
     msg["To"] = to_email
     msg.attach(MIMEText(text_body, "plain", "utf-8"))

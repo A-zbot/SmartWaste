@@ -14,7 +14,7 @@ import sqlite3
 
 from config import DATABASE_PATH, LEGACY_CATEGORY_MAP, LEGACY_STATUS_MAP
 
-SCHEMA_VERSION = 4
+SCHEMA_VERSION = 5
 
 
 # ---------------------------------------------------------------------------
@@ -148,6 +148,25 @@ CREATE TABLE IF NOT EXISTS predictions (
     created_at         TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Administrator feedback on model predictions (Phase 6 model monitoring).
+-- Append-only: original predictions are never overwritten, every review
+-- (confirmation or correction) becomes one row so correction rates can be
+-- computed per model version later.
+CREATE TABLE IF NOT EXISTS prediction_feedback (
+    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+    report_id           INTEGER NOT NULL REFERENCES reports(id) ON DELETE CASCADE,
+    model_name          TEXT,
+    model_version       TEXT,
+    original_category   TEXT,
+    corrected_category  TEXT,
+    original_urgency    TEXT,
+    corrected_urgency   TEXT,
+    was_correction      INTEGER NOT NULL DEFAULT 0,
+    admin_label         TEXT,
+    note                TEXT,
+    created_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE IF NOT EXISTS complaint_clusters (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     label           TEXT NOT NULL,
@@ -203,6 +222,8 @@ CREATE INDEX IF NOT EXISTS idx_reports_coords      ON reports(latitude, longitud
 CREATE INDEX IF NOT EXISTS idx_reports_urgency     ON reports(ai_urgency);
 CREATE INDEX IF NOT EXISTS idx_history_report      ON complaint_history(report_id);
 CREATE INDEX IF NOT EXISTS idx_predictions_report  ON predictions(report_id);
+CREATE INDEX IF NOT EXISTS idx_predfeedback_report ON prediction_feedback(report_id);
+CREATE INDEX IF NOT EXISTS idx_predfeedback_created ON prediction_feedback(created_at);
 CREATE INDEX IF NOT EXISTS idx_notifications_user  ON notifications(user_id, is_read);
 CREATE INDEX IF NOT EXISTS idx_audit_created       ON audit_logs(created_at);
 CREATE INDEX IF NOT EXISTS idx_images_report       ON complaint_images(report_id);

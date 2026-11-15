@@ -104,7 +104,7 @@
           {% if feedback.comment %} - "{{ feedback.comment }}"{% endif %}
           <span class="muted">on {{ feedback.created_at|dt }}</span>
         </div>
-        {% else %}
+        {% elif can_rate %}
         <form method="post" action="{{ url_for('complaints.submit_feedback', report_id=report.id) }}">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <label class="field">Rating
@@ -117,11 +117,19 @@
               <option value="1">1 - Very poor</option>
             </select>
           </label>
+          {% if not report.user_id %}
+          <label class="field">Mobile number used when submitting
+            <input type="tel" name="mobile" inputmode="numeric" autocomplete="tel"
+                   placeholder="Verification for anonymous reports" required>
+          </label>
+          {% endif %}
           <label class="field">Comment (optional)
             <textarea name="comment" maxlength="1000" style="min-height:90px" placeholder="What went well, or what could improve?"></textarea>
           </label>
           <button class="btn btn-primary" type="submit">Submit feedback</button>
         </form>
+        {% else %}
+        <div class="mini-note">Only the citizen who submitted this complaint can rate it.</div>
         {% endif %}
       </div>
     </div>

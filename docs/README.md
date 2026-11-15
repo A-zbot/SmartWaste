@@ -33,6 +33,18 @@ All metrics quoted here are measured by committed scripts
 | 23 | [Conclusion](23-conclusion.md) |
 | 24 | [Future Scope and References](24-future-scope-and-references.md) |
 
+Master-upgrade deliverables (current codebase):
+
+| Document |
+|---|
+| [Project Audit](PROJECT_AUDIT.md) — severity-ranked findings and remediation |
+| [Dataset Documentation](DATASET_DOCUMENTATION.md) — synthetic-data provenance, schema, splits, real-data workflow |
+| [ML Evaluation](ML_EVALUATION.md) — measured metrics, protocol, artifact caveats |
+| [Testing Report](TESTING_REPORT.md) — 150-test suite, requirement coverage, known gaps |
+| [Project Architecture](PROJECT_ARCHITECTURE.md) — layers, blueprints, data flow |
+| [Database Design](DATABASE_DESIGN.md) — schema v5, invariants, migrations |
+| [Viva Preparation](VIVA_PREPARATION.md) — Q&A, demo script, honest limits |
+
 Diagrams are Mermaid (GitHub-flavoured rendering): architecture, context and
 level-1 DFDs, ER model, complaint-submission sequence, ML pipeline and
 deployment topology.

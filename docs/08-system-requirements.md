@@ -33,7 +33,7 @@
 | NFR-02 | Reliability | E-mails best-effort; ML/NLTK failures fall back deterministically; DB transactions around status changes |
 | NFR-03 | Performance | Indexed SQLite columns (`status`, `created_at`, `user_id`, `area`, …); model inference < 50 ms on CPU; duplicate search limited to 250 recent candidates |
 | NFR-04 | Usability | Responsive layouts, skip links, labelled forms, honest empty states |
-| NFR-05 | Maintainability | Blueprint modules, `config.py` centralising all tunables, 73 tests, CI |
+| NFR-05 | Maintainability | Blueprint modules, `config.py` centralising all tunables, 150 tests, CI |
 | NFR-06 | Reproducibility | Seeded data generators, recorded training-data hashes, evaluation script |
 | NFR-07 | Honesty | Insufficient-data states; synthetic-data caveats in README/data docs/results |
 

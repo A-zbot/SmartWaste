@@ -172,7 +172,8 @@ def test_ai_review_confirms_and_clears_flag(client, admin_credentials):
     assert after["ai_needs_review"] == 0
     assert after["ai_review_note"] == "Photo confirms mixed garbage overflow."
     assert after["ai_reviewed_at"]
-    assert after["ai_reviewed_by"] == "administrator"
+    from config import ADMIN_USERNAME
+    assert after["ai_reviewed_by"] == (ADMIN_USERNAME or "administrator")
 
     history = query_one(
         "SELECT remark, actor_type FROM complaint_history "
@@ -212,6 +213,9 @@ def test_ai_review_rejects_invalid_values(client, admin_credentials):
 def test_ai_review_notifies_and_shows_to_citizen(client, admin_credentials):
     email = _signup(client)
     report_id = _submit_report(client)
+    before_category = query_one(
+        "SELECT ai_category FROM reports WHERE id=?", (report_id,)
+    )["ai_category"]
     client.get("/logout")
     assert _admin_login(client, admin_credentials).status_code == 302
 
@@ -227,7 +231,13 @@ def test_ai_review_notifies_and_shows_to_citizen(client, admin_credentials):
         (report_id,),
     )
     assert notification is not None
-    assert "verified" in notification["title"].lower() or "verified" in notification["message"].lower()
+    outcome = (notification["title"] + " " + notification["message"]).lower()
+    # Copy must accurately distinguish a correction from a confirmation.
+    assert "drain & sewer waste" in outcome
+    if before_category and before_category != "Drain & Sewer Waste":
+        assert "corrected" in outcome
+    else:
+        assert "confirmed" in outcome or "verified" in outcome
     assert notification["is_read"] == 0
 
     client.get("/logout")

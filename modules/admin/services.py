@@ -126,12 +126,14 @@ def kpis(filters=None):
         base = con.execute(
             f"SELECT COUNT(*) AS total, "
             f"  SUM(CASE WHEN status IN ({','.join('?' for _ in OPEN_STATUSES)}) THEN 1 ELSE 0 END) AS open, "
+            f"  SUM(CASE WHEN status = 'Submitted' THEN 1 ELSE 0 END) AS pending, "
             f"  SUM(CASE WHEN status = 'Resolved' THEN 1 ELSE 0 END) AS resolved, "
             f"  SUM(CASE WHEN status = 'Rejected' THEN 1 ELSE 0 END) AS rejected, "
             f"  SUM(CASE WHEN status IN ({','.join('?' for _ in OPEN_STATUSES)}) "
             f"            AND (priority IN ('High','Emergency') OR ai_urgency IN ('High','Emergency')) "
             f"            THEN 1 ELSE 0 END) AS urgent_open, "
             f"  SUM(CASE WHEN ai_needs_review = 1 THEN 1 ELSE 0 END) AS needs_review, "
+            f"  SUM(CASE WHEN duplicate_of_report_id IS NOT NULL THEN 1 ELSE 0 END) AS duplicate_linked, "
             f"  SUM(CASE WHEN latitude IS NULL OR longitude IS NULL THEN 1 ELSE 0 END) AS missing_geo "
             f"FROM reports {where}",
             (*OPEN_STATUSES, *OPEN_STATUSES, *params),
@@ -157,11 +159,12 @@ def kpis(filters=None):
     return {
         "total": total,
         "open": base["open"] or 0,
-        "pending": base["open"] or 0,
+        "pending": base["pending"] or 0,
         "resolved": resolved,
         "rejected": base["rejected"] or 0,
         "urgent_open": base["urgent_open"] or 0,
         "needs_review": base["needs_review"] or 0,
+        "duplicate_linked": base["duplicate_linked"] or 0,
         "missing_geo": base["missing_geo"] or 0,
         "resolution_pct": round(100.0 * resolved / total, 1) if total else 0.0,
         "closed_pct": round(100.0 * closed / total, 1) if total else 0.0,
@@ -252,6 +255,86 @@ def status_breakdown(filters=None):
     finally:
         con.close()
     return {row["status"]: row["n"] for row in rows}
+
+
+# ---------------------------------------------------------------------------
+# Administrator prediction feedback (Phase 6 model monitoring)
+# ---------------------------------------------------------------------------
+def ai_feedback_stats(limit_recent=6):
+    """Correction statistics computed from the append-only prediction_feedback table.
+
+    Reviews recorded before the table existed are counted separately via the
+    immutable ``final_category`` column so nothing is double-counted.
+    """
+    con = get_connection()
+    try:
+        totals = con.execute(
+            "SELECT COUNT(*) AS reviews, "
+            "       COALESCE(SUM(was_correction), 0) AS corrections, "
+            "       COUNT(DISTINCT report_id) AS reports_reviewed "
+            "FROM prediction_feedback"
+        ).fetchone()
+        legacy_reviewed = con.execute(
+            "SELECT COUNT(*) FROM reports WHERE final_category IS NOT NULL"
+        ).fetchone()[0]
+        recent = con.execute(
+            "SELECT pf.created_at, pf.was_correction, pf.admin_label, "
+            "       pf.model_version, pf.original_category, pf.corrected_category, "
+            "       pf.original_urgency, pf.corrected_urgency, "
+            "       r.tracking_id, r.id AS report_id "
+            "FROM prediction_feedback pf "
+            "JOIN reports r ON r.id = pf.report_id "
+            "ORDER BY pf.id DESC LIMIT ?",
+            (int(limit_recent),),
+        ).fetchall()
+        by_category = con.execute(
+            "SELECT corrected_category AS label, COUNT(*) AS n, "
+            "       COALESCE(SUM(was_correction), 0) AS corrections "
+            "FROM prediction_feedback "
+            "GROUP BY corrected_category ORDER BY n DESC"
+        ).fetchall()
+    finally:
+        con.close()
+
+    reviews = totals["reviews"] or 0
+    corrections = totals["corrections"] or 0
+    return {
+        "reviews": reviews,
+        "corrections": corrections,
+        "confirmations": reviews - corrections,
+        "correction_rate": round(100.0 * corrections / reviews, 1) if reviews else 0.0,
+        "reports_reviewed": max(totals["reports_reviewed"] or 0, legacy_reviewed),
+        "legacy_reviews": max(0, legacy_reviewed - (totals["reports_reviewed"] or 0)),
+        "recent": [dict(row) for row in recent],
+        "by_category": [dict(row) for row in by_category],
+    }
+
+
+# ---------------------------------------------------------------------------
+# Duplicate links (advisory queue shown on the dashboard)
+# ---------------------------------------------------------------------------
+def recent_duplicate_links(filters=None, limit=8):
+    """Complaints recorded as duplicates of an earlier report, newest first."""
+    where, params = _where(filters or {})
+    scope = f"WHERE r.id IN (SELECT id FROM reports {where})" if where else ""
+    con = get_connection()
+    try:
+        rows = con.execute(
+            "SELECT r.id, r.tracking_id, r.status, r.location, r.waste_type, "
+            "       r.created_at, r.duplicate_of_report_id, "
+            "       t.tracking_id AS target_tracking_id "
+            "FROM reports r "
+            "JOIN reports t ON t.id = r.duplicate_of_report_id "
+            f"{scope} "
+            "ORDER BY r.updated_at DESC, r.id DESC LIMIT ?",
+            (*params, int(limit)),
+        ).fetchall()
+        total = con.execute(
+            "SELECT COUNT(*) FROM reports WHERE duplicate_of_report_id IS NOT NULL"
+        ).fetchone()[0]
+    finally:
+        con.close()
+    return {"rows": [dict(row) for row in rows], "total": total}
 
 
 # ---------------------------------------------------------------------------

@@ -8,13 +8,14 @@
 | Session hijacking | `HttpOnly`, `SameSite=Lax` session cookie; `Secure` when served over HTTPS |
 | Credential stuffing | Per-username login throttling (in-memory window counter) + generic error messages |
 | Admin credential leak | Constant-time comparison for the env-provided admin bootstrap; no default password in code |
-| Privilege escalation | `@admin_required` / `@citizen_required` decorators on every admin route; role checks in the service layer |
+| Privilege escalation | `@admin_required` / `@citizen_required` decorators on every admin/citizen route; the service layer assumes an already-authorised caller (authorisation lives at the route boundary) |
+| Abuse of public write endpoints | Rate limits on `/report`, `/report/duplicate-check`, `/signup` and `/contact` (`PUBLIC_RATE_MAX` / `PUBLIC_RATE_WINDOW`, `security.rate_limit_hit`) plus the per-identifier login throttle |
 | Status-lifecycle abuse | Transitions enforced server-side against `config.ALLOWED_TRANSITIONS` (`complaints/services.py::update_status`); the legacy `GET /update_status/<id>/<status>` renders a CSRF-protected confirmation page instead of acting |
 | Clickjacking | `X-Frame-Options: SAMEORIGIN` on all responses |
 | MIME sniffing | `X-Content-Type-Options: nosniff` |
 | Referrer leakage | `Referrer-Policy: same-origin` |
 | Stored XSS | Jinja auto-escaping everywhere; user HTML never rendered; e-mail bodies HTML-escaped before sending |
-| Unrestricted upload | 5 MB limit, extension + content-type allowlist, randomised filenames outside the code tree (`uploads/`) |
+| Unrestricted upload | 5 MB limit, extension allowlist + 16-byte magic-byte signature check (png/jpeg/webp), randomised filenames outside the code tree (`uploads/`) |
 | SQL injection | parameterised queries throughout (`?` placeholders) |
 | Path traversal | upload/download paths resolved and checked against the configured upload root |
 | Password storage | Werkzeug `generate_password_hash` (scrypt/PBKDF2 default) |
