@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<script>try{var t=localStorage.getItem('sw-theme');if(!t&&window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)t='dark';if(t)document.documentElement.setAttribute('data-theme',t)}catch(e){}</script>
 <meta name="csrf-token" content="{{ csrf_token() }}">
 <title>{% block title %}SmartWaste · AI-Driven Waste Management{% endblock %}</title>
 <meta name="description" content="SmartWaste 2.0 - AI-driven urban waste management and predictive decision support for citizens and municipal authorities.">
@@ -24,7 +25,7 @@
     <a href="{{ url_for('complaints.track') }}" class="{{ 'nav-active' if request.endpoint == 'complaints.track' }}">Track</a>
     {% if session.get('user_id') %}
     <a href="{{ url_for('complaints.my_reports') }}" class="{{ 'nav-active' if request.endpoint == 'complaints.my_reports' }}">My Complaints</a>
-    <a href="{{ url_for('complaints.notifications') }}" style="position:relative" class="{{ 'nav-active' if request.endpoint == 'complaints.notifications' }}">
+    <a href="{{ url_for('complaints.notifications') }}" class="{{ 'nav-active' if request.endpoint == 'complaints.notifications' }}">
       Notifications{% if nav_unread %}<span class="nav-badge">{{ nav_unread }}</span>{% endif %}
     </a>
     {% endif %}
@@ -41,6 +42,7 @@
       <a href="{{ url_for('auth.signup') }}">Sign Up</a>
     {% endif %}
     <a class="nav-cta" href="{{ url_for('complaints.report') }}">Report Waste →</a>
+    <button class="theme-toggle" type="button" onclick="toggleTheme()" aria-label="Switch to dark theme">&#9790;&#xFE0E;</button>
   </div>
 </nav>
 

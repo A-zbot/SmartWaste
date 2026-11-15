@@ -1,10 +1,10 @@
 {% extends "base.html" %}{% block title %}Complaint Submitted · SmartWaste{% endblock %}
 {% block content %}
 <section class="success-page">
-  <div class="success-card card" style="padding:34px">
+  <div class="success-card card">
     <div class="success-icon">✓</div>
     <span class="eyebrow">Complaint received</span>
-    <h1 style="margin:6px 0 4px;font-size:26px">Thank you, {{ report.name }}!</h1>
+    <h1>Thank you, {{ report.name }}!</h1>
     <p class="muted">Your report is in the municipal queue and the AI analysis is attached below.</p>
 
     <div class="ref">
@@ -13,9 +13,9 @@
       Submitted {{ report.created_at|dt }}
     </div>
 
-    <div class="card card-pad mb-2" style="text-align:left;background:var(--surface-2)">
+    <div class="card card-pad mb-2 tinted">
       <span class="eyebrow">AI analysis (model output)</span>
-      <div class="kv mt-1">
+      <dl class="kv mt-1">
         <dt>Predicted category</dt>
         <dd>{{ ai.category or 'model unavailable' }}
           {% if ai.category %}<span class="badge badge-ai">{{ (ai.confidence * 100)|round|int }}% confidence</span>{% endif %}
@@ -25,7 +25,7 @@
         <dd>{{ ai.urgency or 'model unavailable' }} <span class="muted">(you reported: {{ report.priority }})</span></dd>
         <dt>Recommended action</dt>
         <dd>{{ ai.recommended_action }}</dd>
-      </div>
+      </dl>
       {% if explanation.model and explanation.model.category and explanation.model.category.keywords %}
       <div class="mt-2">
         <span class="eyebrow">Signals the model read</span>
@@ -39,9 +39,9 @@
     </div>
 
     {% if duplicates.checked and duplicates.matches %}
-    <div class="card card-pad mb-2" style="text-align:left">
-      <span class="eyebrow" style="color:var(--warn)">Possible similar complaints</span>
-      <p class="muted" style="font-size:13px;margin-top:6px">
+    <div class="card card-pad mb-2">
+      <span class="eyebrow eyebrow-warn">Possible similar complaints</span>
+      <p class="muted note-sm">
         {{ duplicates.match_count }} recent complaint(s) are textually similar
         {% if duplicates.self_location_known %}and within {{ duplicates.thresholds.distance_km }} km{% endif %}.
         Nothing was rejected - this is informational.</p>
@@ -61,13 +61,13 @@
     </div>
     {% endif %}
 
-    <div class="mini-note ok" style="text-align:left">
+    <div class="mini-note ok">
       Track your complaint anytime with <b>{{ report.tracking_id }}</b> on the
-      <a href="{{ url_for('complaints.track') }}" style="color:var(--emerald-700);font-weight:700">Track page</a>.
+      <a href="{{ url_for('complaints.track') }}">Track page</a>.
       You will get a notification whenever the status changes.
     </div>
 
-    <div class="hero-actions mt-3" style="justify-content:center">
+    <div class="hero-actions centered mt-3">
       <a class="btn btn-primary" href="{{ url_for('complaints.detail', report_id=report.id) }}">Open complaint</a>
       {% if session.get('user_id') %}
       <a class="btn btn-ghost" href="{{ url_for('complaints.my_reports') }}">My complaints</a>

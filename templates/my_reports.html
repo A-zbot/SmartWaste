@@ -8,27 +8,27 @@
   <p>Every report you submitted, with its live status, AI classification and administrator remarks.</p>
 </section>
 
-<section class="section" style="padding-top:30px">
-  <div class="kpi-grid container" style="max-width:1100px">
+<section class="section section-tight">
+  <div class="kpi-grid wide">
     <div class="kpi"><div class="kpi-label">Total filed</div><div class="kpi-value">{{ total }}</div><div class="kpi-sub">by this account</div></div>
     <div class="kpi kpi-info"><div class="kpi-label">Open</div><div class="kpi-value">{{ open_count }}</div><div class="kpi-sub">awaiting resolution</div></div>
     <div class="kpi"><div class="kpi-label">Resolved</div><div class="kpi-value">{{ resolved }}</div><div class="kpi-sub {{ 'good' if resolved else '' }}">closed successfully</div></div>
     <div class="kpi kpi-warn"><div class="kpi-label">Notifications</div><div class="kpi-value">{{ unread }}</div><div class="kpi-sub">unread updates</div></div>
   </div>
 
-  <div style="max-width:1100px;margin:24px auto 0;display:flex;gap:10px;flex-wrap:wrap">
+  <div class="row-wrap wide mt-3">
     <a class="btn btn-primary" href="{{ url_for('complaints.report') }}">+ New complaint</a>
     <a class="btn btn-ghost" href="{{ url_for('complaints.notifications') }}">Notifications{% if unread %} ({{ unread }}){% endif %}</a>
     <a class="btn btn-ghost" href="{{ url_for('auth.profile') }}">Profile</a>
   </div>
 
-  <div class="report-list mt-3" style="max-width:1100px;margin-left:auto;margin-right:auto">
+  <div class="report-list wide mt-3">
     {% for r in reports %}{{ report_card(r) }}{% endfor %}
   </div>
   {{ paginate(page, pages, 'complaints.my_reports') }}
 
   {% if not reports %}
-  <div class="empty-state" style="max-width:760px;margin:26px auto">
+  <div class="empty-state">
     <h3>No complaints yet</h3>
     <p>When you report a waste problem it will appear here with a full status timeline.</p>
     <a class="btn btn-primary" href="{{ url_for('complaints.report') }}">Report waste</a>

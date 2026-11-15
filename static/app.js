@@ -17,6 +17,25 @@ document.addEventListener('click', (e) => {
   }
 });
 
+/* ---------------- theme (light / dark, persisted) ---------------- */
+function currentTheme() {
+  return document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+}
+function applyThemeLabels() {
+  const dark = currentTheme() === 'dark';
+  document.querySelectorAll('.theme-toggle').forEach((btn) => {
+    btn.textContent = dark ? '\u2600\uFE0E' : '\u263E\uFE0E';
+    btn.setAttribute('aria-label', dark ? 'Switch to light theme' : 'Switch to dark theme');
+    btn.setAttribute('title', dark ? 'Light theme' : 'Dark theme');
+  });
+}
+function toggleTheme() {
+  const next = currentTheme() === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  try { localStorage.setItem('sw-theme', next); } catch (e) { /* storage unavailable */ }
+  applyThemeLabels();
+}
+
 /* ---------------- flash messages ---------------- */
 function autoDismissFlashes() {
   document.querySelectorAll('.flash').forEach((el) => {
@@ -101,7 +120,7 @@ function checkDuplicates() {
     category: (document.getElementById('waste_type') || {}).value || null
   };
   const meta = document.getElementById('dupMeta');
-  if (meta) meta.innerHTML = '<span class="dup-loading">Analysing text similarity and distance…</span>';
+  if (meta) meta.innerHTML = '<span class="dup-loading dup-busy">Analysing text similarity and distance…</span>';
   fetch('/report/duplicate-check', {
     method: 'POST',
     headers: {
@@ -525,6 +544,7 @@ function initMap() {
 /* ---------------- init ---------------- */
 document.addEventListener('DOMContentLoaded', () => {
   autoDismissFlashes();
+  applyThemeLabels();
   bindImagePreview();
 
   const dash = document.getElementById('dashboardData');

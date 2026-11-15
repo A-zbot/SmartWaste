@@ -18,8 +18,8 @@
       <button class="btn btn-primary btn-block" type="submit">Sign in →</button>
     </form>
 
-    <p class="mt-3" style="text-align:center;font-size:14px">New here? <a href="{{ url_for('auth.signup') }}" style="color:var(--emerald-700);font-weight:700">Create an account</a></p>
-    <div class="mini-note mt-2" style="text-align:left">
+    <p class="switch">New here? <a href="{{ url_for('auth.signup') }}">Create an account</a></p>
+    <div class="mini-note mt-2">
       <b>Administrator:</b> sign in with the ADMIN_USERNAME / ADMIN_PASSWORD set in your
       environment. Failed attempts are throttled and written to the audit log.
     </div>

@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<script>try{var t=localStorage.getItem('sw-theme');if(!t&&window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)t='dark';if(t)document.documentElement.setAttribute('data-theme',t)}catch(e){}</script>
 <meta name="csrf-token" content="{{ csrf_token() }}">
 <title>{% block title %}Admin{% endblock %} · SmartWaste Console</title>
 <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
@@ -49,6 +50,7 @@
         </div>
       </div>
       <div class="top-actions">
+        <button class="theme-toggle" type="button" onclick="toggleTheme()" aria-label="Switch to dark theme">&#9790;&#xFE0E;</button>
         <a class="btn btn-ghost btn-sm" href="{{ url_for('admin.analytics') }}">Forecast</a>
         <a class="btn btn-ghost btn-sm" href="{{ url_for('admin.map_view') }}">Map</a>
         <a class="btn btn-ghost btn-sm" href="{{ url_for('admin.export_complaints') }}">⤓ CSV</a>
@@ -58,7 +60,7 @@
 
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
-        <div class="flash-wrap" role="status" aria-live="polite" style="padding:14px 26px 0">
+        <div class="flash-wrap" role="status" aria-live="polite">
           {% for category, msg in messages %}
             <div class="flash {{ category }}">{{ msg }} <button onclick="this.parentElement.remove()" aria-label="Dismiss">×</button></div>
           {% endfor %}

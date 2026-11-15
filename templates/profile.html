@@ -6,16 +6,16 @@
   <p>{{ user.email }} · member since {{ user.created_at|dateonly }}</p>
 </section>
 
-<section class="section" style="padding-top:26px">
-  <div class="kpi-grid container" style="max-width:1080px">
+<section class="section section-tight">
+  <div class="kpi-grid wide">
     <div class="kpi"><div class="kpi-label">Complaints filed</div><div class="kpi-value">{{ stats.total }}</div><div class="kpi-sub">by this account</div></div>
     <div class="kpi kpi-info"><div class="kpi-label">Open</div><div class="kpi-value">{{ stats.open }}</div><div class="kpi-sub">in progress</div></div>
     <div class="kpi"><div class="kpi-label">Resolved</div><div class="kpi-value">{{ stats.resolved }}</div><div class="kpi-sub {{ 'good' if stats.resolved }}">closed</div></div>
     <div class="kpi kpi-warn"><div class="kpi-label">AI flagged</div><div class="kpi-value">{{ stats.ai_flagged }}</div><div class="kpi-sub">low-confidence AI</div></div>
   </div>
 
-  <div class="detail-grid mt-3" style="max-width:1080px;margin-left:auto;margin-right:auto">
-    <div style="display:grid;gap:18px">
+  <div class="detail-grid mt-3">
+    <div class="stack">
       <div class="card">
         <div class="card-head"><div><h3>Recent notifications</h3><p>Status changes and administrator remarks.</p></div>
           <a class="chip-btn neutral" href="{{ url_for('complaints.notifications') }}">View all</a></div>
@@ -24,6 +24,7 @@
           <div class="notif-list">
             {% for n in notifications %}
             <div class="notif {{ '' if n.is_read else 'unread' }}">
+              <span class="notif-icon">{{ '?' if n.is_read else '?' }}</span>
               <div>
                 <b>{{ n.title }}</b>
                 <p>{{ n.message }}</p>
@@ -62,7 +63,7 @@
       </div>
     </div>
 
-    <div style="display:grid;gap:18px">
+    <div class="stack">
       <div class="card">
         <div class="card-head"><div><h3>Edit profile</h3><p>Name and email used across the portal.</p></div></div>
         <div class="detail-block">
@@ -82,13 +83,13 @@
       <div class="card">
         <div class="card-head"><div><h3>Account</h3><p>Profile details and security.</p></div></div>
         <div class="detail-block">
-          <div class="kv">
+          <dl class="kv">
             <dt>Name</dt><dd>{{ user.name }}</dd>
             <dt>Email</dt><dd>{{ user.email }}</dd>
             <dt>Role</dt><dd>{{ user.role }}</dd>
             <dt>Status</dt><dd>{{ 'Active' if user.is_active else 'Disabled' }}</dd>
             <dt>Unread notifications</dt><dd>{{ unread }}</dd>
-          </div>
+          </dl>
         </div>
       </div>
 

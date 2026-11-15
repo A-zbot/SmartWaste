@@ -6,9 +6,9 @@
   <p>{{ unread }} unread of {{ rows|length }} recent update{{ 's' if rows|length != 1 else '' }}.</p>
 </section>
 
-<section class="section" style="padding-top:28px">
-  <div class="card card-pad" style="max-width:880px;margin:0 auto">
-    <div class="card-head" style="padding:0 0 14px">
+<section class="section section-tight">
+  <div class="card card-pad mid">
+    <div class="card-head flush">
       <div><h3>Activity on your complaints</h3><p>Status transitions, remarks and resolutions.</p></div>
       {% if unread %}
       <form method="post" action="{{ url_for('complaints.mark_notifications_read') }}">
@@ -26,16 +26,16 @@
         <div>
           <b>{{ n.title }}</b>
           <p>{{ n.message }}</p>
-          <span style="display:inline-flex;gap:8px;align-items:center;margin-top:8px">
+          <div class="notif-actions">
             {% if n.link %}<a class="chip-btn neutral" href="{{ n.link }}">Open complaint</a>{% endif %}
             {% if not n.is_read %}
-            <form method="post" action="{{ url_for('complaints.mark_notifications_read') }}" style="display:inline">
+            <form method="post" action="{{ url_for('complaints.mark_notifications_read') }}" class="inline-form">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <input type="hidden" name="id" value="{{ n.id }}">
               <button class="chip-btn neutral" type="submit">Mark read</button>
             </form>
             {% endif %}
-          </span>
+          </div>
         </div>
         <span class="notif-time">{{ n.created_at|dt }}</span>
       </div>

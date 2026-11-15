@@ -7,18 +7,18 @@
      classified, geolocated, clustered and forecasted intelligence for municipal teams.</p>
 </section>
 
-<section class="section" style="padding-top:30px">
-  <div class="grid grid-2 container" style="max-width:1040px">
+<section class="section section-tight">
+  <div class="grid grid-2 container wide">
     <div class="card card-pad">
       <span class="eyebrow">Problem</span>
-      <h3 style="margin:8px 0">Complaints pile up without structure</h3>
+      <h3>Complaints pile up without structure</h3>
       <p class="muted">Municipal call centres receive thousands of waste reports per month.
       Text is unstructured, duplicate reports are common, hotspots are discovered late,
       and resource allocation is reactive. Citizens get no visibility of what happens next.</p>
     </div>
     <div class="card card-pad">
       <span class="eyebrow">Solution</span>
-      <h3 style="margin:8px 0">A closed-loop decision-support pipeline</h3>
+      <h3>A closed-loop decision-support pipeline</h3>
       <p class="muted">Every complaint is classified by a trained model, screened for
       duplicates with NLP similarity, mapped, clustered with DBSCAN, and folded into a
       demand forecast with honest baselines - all explainable to the operator.</p>
@@ -31,7 +31,7 @@
     <span class="eyebrow">Modules</span>
     <h2>What the system actually does</h2>
   </div>
-  <div class="grid grid-3 container" style="max-width:1040px">
+  <div class="grid grid-3 container wide">
     <div class="step"><i>B</i><strong>Supervised AI classification</strong><p>TF-IDF + Logistic Regression / Random Forest, stratified split, 5-fold cross-validation, published metrics and confusion matrices.</p></div>
     <div class="step"><i>C</i><strong>NLP duplicate detection</strong><p>Cosine similarity over TF-IDF vectors combined with haversine distance and category match - suggestions, never silent rejections.</p></div>
     <div class="step"><i>D</i><strong>DBSCAN hotspots</strong><p>Haversine DBSCAN over stored coordinates with configurable radius and min-samples; recurring zones surface on the map.</p></div>
@@ -46,7 +46,7 @@
     <span class="eyebrow">Principles</span>
     <h2>Honest by design</h2>
   </div>
-  <div class="grid grid-3 container" style="max-width:1040px">
+  <div class="grid grid-3 container wide">
     <div class="step"><i>1</i><strong>No fabricated numbers</strong><p>Every KPI, chart, recommendation and metric is computed from the live database or a measured evaluation report.</p></div>
     <div class="step"><i>2</i><strong>No fake AI</strong><p>If a model is missing or uncertain the UI says so; low confidence is flagged for human review instead of being hidden.</p></div>
     <div class="step"><i>3</i><strong>Safe evolution</strong><p>Schema migrations are forward-only and idempotent so existing complaints survive upgrades.</p></div>

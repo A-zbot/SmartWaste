@@ -1,5 +1,6 @@
 {% extends "base.html" %}{% block title %}SmartWaste · AI-Driven Waste Management{% endblock %}
 {% block content %}
+<!-- Hero: editorial identity -->
 <section class="hero">
   <div class="hero-copy">
     <span class="eyebrow">AI-Driven Urban Waste Management</span>
@@ -35,20 +36,52 @@
   </aside>
 </section>
 
+<!-- Capability band: what the platform actually does -->
+<section class="cap-band">
+  <div class="cap-grid">
+    <div class="cap"><i>NLP</i><div><b>Text classification</b>
+      <small>TF-IDF features feed a trained model that predicts category and urgency with a real confidence score.</small></div></div>
+    <div class="cap"><i>DUP</i><div><b>Duplicate warnings</b>
+      <small>Semantic near-duplicate detection surfaces matching complaints before a second work order is created.</small></div></div>
+    <div class="cap"><i>MAP</i><div><b>Hotspot clustering</b>
+      <small>DBSCAN groups recurring complaints into problem zones — with honest handling of missing locations.</small></div></div>
+    <div class="cap"><i>FX</i><div><b>Demand forecasting</b>
+      <small>7-day default, up to 30 days ahead, evaluated with MAE/RMSE on a chronological hold-out.</small></div></div>
+  </div>
+</section>
+
+<!-- How it works: borderless numbered flow -->
 <section class="section">
   <div class="section-head">
     <span class="eyebrow">How it works</span>
     <h2>Four steps from report to resolution</h2>
     <p>The same complaint record powers the citizen view and the municipal decision-support console.</p>
   </div>
-  <div class="grid grid-4 container">
-    <div class="step"><i>1</i><strong>Describe the problem</strong><p>Category, location with GPS, photo evidence and what you observed.</p></div>
-    <div class="step"><i>2</i><strong>AI analyses it instantly</strong><p>TF-IDF + classifier predicts category and urgency with a real confidence score.</p></div>
-    <div class="step"><i>3</i><strong>Authorities triage</strong><p>Admins see explanations, duplicate candidates and hotspot context.</p></div>
-    <div class="step"><i>4</i><strong>You track every change</strong><p>Status timeline, administrator remarks, resolution evidence and feedback.</p></div>
+  <div class="step-flow container">
+    <div class="flow-item">
+      <span class="flow-num">Step 01</span>
+      <strong>Describe the problem</strong>
+      <p>Category, location with GPS, photo evidence and what you observed.</p>
+    </div>
+    <div class="flow-item">
+      <span class="flow-num">Step 02</span>
+      <strong>AI analyses it instantly</strong>
+      <p>TF-IDF + classifier predicts category and urgency with a real confidence score.</p>
+    </div>
+    <div class="flow-item">
+      <span class="flow-num">Step 03</span>
+      <strong>Authorities triage</strong>
+      <p>Admins see explanations, duplicate candidates and hotspot context.</p>
+    </div>
+    <div class="flow-item">
+      <span class="flow-num">Step 04</span>
+      <strong>You track every change</strong>
+      <p>Status timeline, administrator remarks, resolution evidence and feedback.</p>
+    </div>
   </div>
 </section>
 
+<!-- Taxonomy tiles on sage ground -->
 <section class="section pale">
   <div class="section-head">
     <span class="eyebrow">Waste categories</span>
@@ -66,15 +99,47 @@
   </div>
 </section>
 
+<!-- Editorial pillars: why it is more than a form -->
 <section class="section">
   <div class="section-head">
     <span class="eyebrow">Why SmartWaste 2.0</span>
     <h2>Beyond a complaint form</h2>
   </div>
-  <div class="grid grid-3 container">
-    <div class="step"><i>AI</i><strong>Supervised complaint intelligence</strong><p>Logistic Regression and Random Forest compared with cross-validation; the selected model's real metrics are published on the admin console.</p></div>
-    <div class="step"><i>GEO</i><strong>Geospatial hotspot detection</strong><p>DBSCAN over stored coordinates finds recurring problem zones - configurable radius, honest handling of missing locations.</p></div>
-    <div class="step"><i>FX</i><strong>Predictive decision support</strong><p>Daily volumes are forecast with a seasonal baseline versus a Random Forest regressor, evaluated with MAE/RMSE on a chronological hold-out.</p></div>
+  <div class="pillars container">
+    <div class="pillar">
+      <div class="pillar-key"><i>AI</i><b>Supervised complaint intelligence</b></div>
+      <p>Logistic Regression and Random Forest are compared with cross-validation, and the selected
+        model's <em>real metrics are published</em> on the admin console — accuracy, macro-F1,
+        per-class support and the confusion matrix. Nothing is claimed that has not been measured.</p>
+    </div>
+    <div class="pillar">
+      <div class="pillar-key"><i>GEO</i><b>Geospatial hotspot detection</b></div>
+      <p>DBSCAN over stored coordinates finds recurring problem zones with a configurable radius and
+        minimum cluster size. Complaints without coordinates are reported honestly rather than
+        silently absorbed into a cluster.</p>
+    </div>
+    <div class="pillar">
+      <div class="pillar-key"><i>FX</i><b>Predictive decision support</b></div>
+      <p>Daily complaint volumes are forecast with a seasonal baseline versus a Random Forest
+        regressor, evaluated with MAE and RMSE on a chronological hold-out — so the operations team
+        knows exactly how much to trust the number.</p>
+    </div>
+  </div>
+</section>
+
+<!-- Closing CTA -->
+<section class="cta-band">
+  <div class="cta-inner">
+    <div>
+      <span class="eyebrow">Start in 60 seconds</span>
+      <h2>Report a waste problem before it grows</h2>
+      <p>Every submission gets a tracking ID, an automatic duplicate check, AI classification
+        and a full status timeline — no app install, no account required to report.</p>
+    </div>
+    <div class="cta-actions">
+      <a class="btn btn-primary" href="{{ url_for('complaints.report') }}">Report Waste →</a>
+      <a class="btn btn-ghost" href="{{ url_for('complaints.track') }}">Track a Complaint</a>
+    </div>
   </div>
 </section>
 {% endblock %}

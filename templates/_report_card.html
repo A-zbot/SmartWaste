@@ -24,7 +24,7 @@
 
   <div class="report-card-body">
     {% if r.image %}<a href="{{ url_for('complaints.uploaded_file', filename=r.image) }}" target="_blank" rel="noopener">
-      <img class="thumb-lg" style="max-width:190px;height:120px" src="{{ url_for('complaints.uploaded_file', filename=r.image) }}" alt="Complaint photo"></a>{% endif %}
+      <img class="thumb-lg thumb-sm" src="{{ url_for('complaints.uploaded_file', filename=r.image) }}" alt="Complaint photo"></a>{% endif %}
     <div class="report-card-text">
       <p class="report-desc">{{ r.description }}</p>
       <div class="report-meta">
@@ -50,7 +50,7 @@
 {% macro timeline(status) %}
 {% set order = ['Submitted', 'Under Review', 'Assigned', 'In Progress', 'Resolved'] %}
 {% if status == 'Rejected' %}
-<div class="timeline" style="grid-template-columns:1fr">
+<div class="timeline single">
   <div class="tl-step rejected"><span class="tl-dot">✕</span><span><b>Rejected</b><small>This complaint was closed without action - see the administrator's remark for the reason.</small></span></div>
 </div>
 {% else %}

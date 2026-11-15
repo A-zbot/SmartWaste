@@ -8,10 +8,10 @@
     number is only accepted together with one of them.</p>
 </section>
 
-<section class="section" style="padding-top:32px">
-  <div class="card card-pad" style="max-width:760px;margin:0 auto 22px">
-    <form method="get" action="{{ url_for('complaints.track') }}" style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
-      <label class="field" style="flex:1;margin-bottom:0">Tracking ID or complaint number
+<section class="section section-tight">
+  <div class="card card-pad narrow mb-2">
+    <form method="get" action="{{ url_for('complaints.track') }}" class="track-row">
+      <label class="field">Tracking ID or complaint number
         <input name="q" value="{{ q }}" placeholder="e.g. SW-00001 or 12 (optionally + mobile)" autofocus>
       </label>
       <button class="btn btn-primary" type="submit">Track →</button>
@@ -21,24 +21,24 @@
   </div>
 
   {% if notice %}
-  <div class="mini-note warn" style="max-width:760px;margin:0 auto 18px">{{ notice }}</div>
+  <div class="mini-note warn narrow mb-2">{{ notice }}</div>
   {% endif %}
 
   {% if q %}
     {% if results %}
-    <p class="muted mb-2" style="max-width:1100px;margin:0 auto 14px">{{ results|length }} complaint{{ 's' if results|length != 1 else '' }} found for "<b>{{ q }}</b>"</p>
-    <div class="report-list" style="max-width:1100px;margin:0 auto">
+    <p class="muted mb-2 wide">{{ results|length }} complaint{{ 's' if results|length != 1 else '' }} found for "<b>{{ q }}</b>"</p>
+    <div class="report-list wide">
       {% for r in results %}{{ report_card(r, masked=true) }}{% endfor %}
     </div>
     {% elif not notice %}
-    <div class="empty-state" style="max-width:760px;margin:0 auto">
+    <div class="empty-state">
       <h3>No complaint found</h3>
       <p>Check the tracking number and try again. IDs look like SW-00007.</p>
       <a class="btn btn-ghost" href="{{ url_for('complaints.report') }}">Report a new problem</a>
     </div>
     {% endif %}
   {% else %}
-  <div class="grid grid-3 container" style="max-width:1000px">
+  <div class="grid grid-3 wide">
     <div class="step"><i>ID</i><strong>By tracking ID</strong><p>Shown after submission and in your notifications.</p></div>
     <div class="step"><i>ID+</i><strong>ID + mobile</strong><p>Add your 10-digit number to confirm the report is yours.</p></div>
     <div class="step"><i>Me</i><strong>From your account</strong><p>Sign in for the full timeline, AI panel and feedback.</p></div>
