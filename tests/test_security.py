@@ -168,6 +168,19 @@ def test_admin_route_redirects_anonymous_visitors(client):
     assert "/login" in response.headers["Location"]
 
 
+def test_admin_trailing_slash_serves_dashboard(client, admin_credentials):
+    """Regression: /admin/ must hit the dashboard, not the custom 404 page."""
+    response = client.get("/admin/")
+    assert response.status_code == 302
+    assert "/login" in response.headers["Location"]
+
+    assert _login(client, admin_credentials["ADMIN_USERNAME"],
+                  admin_credentials["ADMIN_PASSWORD"]).status_code == 302
+    response = client.get("/admin/")
+    assert response.status_code == 200
+    assert "Error 404" not in response.get_data(as_text=True)
+
+
 def test_citizen_cannot_post_status_change(client, admin_credentials):
     _signup(client)
     report_id = _submit_report(client)

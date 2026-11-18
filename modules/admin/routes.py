@@ -61,7 +61,7 @@ def _admin_label():
 # ---------------------------------------------------------------------------
 # Dashboard
 # ---------------------------------------------------------------------------
-@bp.route("/admin")
+@bp.route("/admin", strict_slashes=False)
 @admin_required
 def dashboard():
     payload = overview(request.args)
