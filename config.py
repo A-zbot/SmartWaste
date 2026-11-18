@@ -189,6 +189,34 @@ RISING_MIN_INCREASE = 3
 RECOMMENDATION_LIMIT = 8
 
 # ---------------------------------------------------------------------------
+# AI chat assistant (Gemini-powered SmartWaste AI)
+# ---------------------------------------------------------------------------
+# Master switch for the chat widget + chat APIs. The API key itself is only
+# ever read server-side; it is never rendered into HTML or sent to JavaScript.
+AI_CHAT_ENABLED = os.environ.get("AI_CHAT_ENABLED", "false").strip().lower() in {
+    "1", "true", "yes", "on",
+}
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "").strip()
+# Single place where the model id lives - overridden per deployment and
+# verified against the models actually available to the API account.
+GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "").strip() or "gemini-2.0-flash"
+
+AI_CHAT_TIMEOUT_SECONDS = float(os.environ.get("AI_CHAT_TIMEOUT_SECONDS", "30"))
+AI_CHAT_MAX_MESSAGE_CHARS = int(os.environ.get("AI_CHAT_MAX_MESSAGE_CHARS", "2000"))
+# Conversation turns forwarded to the model (newest last).
+AI_CHAT_HISTORY_WINDOW = int(os.environ.get("AI_CHAT_HISTORY_WINDOW", "12"))
+AI_CHAT_RATE_MAX = int(os.environ.get("AI_CHAT_RATE_MAX", "40"))
+AI_CHAT_RATE_WINDOW = int(os.environ.get("AI_CHAT_RATE_WINDOW", "300"))
+AI_CHAT_MAX_CONVERSATIONS = int(os.environ.get("AI_CHAT_MAX_CONVERSATIONS", "20"))
+AI_CHAT_RAG_RESULTS = int(os.environ.get("AI_CHAT_RAG_RESULTS", "4"))
+
+
+def chat_available():
+    """Chat endpoints are served when the feature is switched on."""
+    return AI_CHAT_ENABLED
+
+
+# ---------------------------------------------------------------------------
 # Session / abuse protection
 # ---------------------------------------------------------------------------
 LOGIN_MAX_ATTEMPTS = int(os.environ.get("LOGIN_MAX_ATTEMPTS", "8"))

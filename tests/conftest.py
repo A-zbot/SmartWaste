@@ -14,3 +14,11 @@ import os
 
 os.environ.setdefault("PUBLIC_RATE_MAX", "100000")
 os.environ.setdefault("AUTO_TRAIN_MODELS", "0")
+
+# SmartWaste AI chat: the widget and its APIs are exercised in tests, but the
+# suite must never call the real Gemini API - the key is forced empty here
+# (load_dotenv does not override existing environment variables) and every
+# AI-generated answer is mocked inside tests/test_chatbot.py.
+os.environ.setdefault("AI_CHAT_ENABLED", "true")
+os.environ["GEMINI_API_KEY"] = ""
+os.environ.setdefault("GEMINI_MODEL", "gemini-2.0-flash")

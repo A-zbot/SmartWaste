@@ -5,8 +5,10 @@ from modules.complaints.routes import bp as complaints_bp
 from modules.public.routes import bp as public_bp
 from modules.admin.routes import bp as admin_bp
 from modules.analytics.routes import bp as analytics_bp
+from modules.chatbot.routes import bp as chat_bp
 
-ALL_BLUEPRINTS = (public_bp, auth_bp, complaints_bp, admin_bp, analytics_bp)
+ALL_BLUEPRINTS = (public_bp, auth_bp, complaints_bp, admin_bp, analytics_bp,
+                  chat_bp)
 
 
 def register_blueprints(app):

@@ -178,6 +178,7 @@ def _register_context_processors(app):
             "categories": config.CATEGORIES,
             "statuses": config.COMPLAINT_STATUSES,
             "priorities": config.PRIORITIES,
+            "chat_enabled": config.chat_available(),
         }
         try:
             if session.get("user_id"):

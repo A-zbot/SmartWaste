@@ -63,6 +63,24 @@ handling, geospatial hotspots, demand forecasting and a full audit trail.
 - User management, contact-message inbox, and a filterable, paginated audit
   trail - all server-side paginated (queue, inbox, audit, citizen history)
 
+### SmartWaste AI assistant (Gemini-powered)
+
+- Floating chat widget on every page: trilingual (English / Hindi / Hinglish)
+  with automatic language detection
+- **Citizen assistant**: conversational complaint registration (guided state
+  machine with confirmation before anything is created), complaint tracking by
+  tracking ID, personal complaint list, and knowledge answers grounded by RAG
+  over the bundled waste-management knowledge base
+- **Admin assistant**: live statistics, pending/high-priority complaint lists,
+  hotspot and recommendation summaries - role comes from the server session
+  only, and citizen conversations never see admin data
+- Chat history per account (list, reopen, clear, delete) with strict
+  conversation ownership checks
+- Graceful degradation: without a `GEMINI_API_KEY` every flow still works via
+  deterministic fallbacks; rate limiting, input length/control-character
+  sanitisation, CSRF on all chat endpoints, and the API key is never rendered
+  into HTML or JSON
+
 ### Intelligence modules (Flask-agnostic, testable in isolation)
 
 - Complaint classifier (waste category) and urgency predictor:
@@ -112,8 +130,10 @@ machine, AI review, duplicate linking, citizen feedback authorisation,
 upload validation, dashboard panels, ML unit behaviour (preprocessing,
 prediction fallbacks, forecast honesty), security (CSRF, headers, rate
 limits, access control), pagination, forecasting/duplicate/evaluation
-honesty checks, and the public pages. **150 tests, all passing** — see
-`docs/TESTING_REPORT.md` for the requirement-to-test map.
+honesty checks, the public pages, and the SmartWaste AI chatbot (language
+detection, RAG, registration/tracking flows, admin assistant, chat history
+ownership, prompt-injection and API-key leak checks). **205 tests, all
+passing** — see `docs/TESTING_REPORT.md` for the requirement-to-test map.
 
 ## Configuration
 
@@ -129,6 +149,9 @@ Copy `.env.example` to `.env` and fill in the values.
 | `SMTP_FROM` | Sender address, defaults to `SMTP_USER` |
 | `DATABASE_PATH` | SQLite database location (default `waste.db`) |
 | `AUTO_TRAIN_MODELS` | Set `0` to never auto-train on startup |
+| `GEMINI_API_KEY` | Google AI Studio key for the chatbot; leave empty for deterministic fallback mode (no external calls) |
+| `GEMINI_MODEL` | Gemini model id, default `gemini-2.0-flash`; verified against the account's available models at startup |
+| `AI_CHAT_ENABLED` | Set `false` to hide the widget and return `503` from the chat APIs |
 
 If `SMTP_USER` or `SMTP_PASSWORD` is missing, the app runs normally and
 simply skips the email. Email sending is best-effort: a mail failure never

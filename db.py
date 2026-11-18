@@ -14,7 +14,7 @@ import sqlite3
 
 from config import DATABASE_PATH, LEGACY_CATEGORY_MAP, LEGACY_STATUS_MAP
 
-SCHEMA_VERSION = 5
+SCHEMA_VERSION = 6
 
 
 # ---------------------------------------------------------------------------
@@ -212,6 +212,35 @@ CREATE TABLE IF NOT EXISTS audit_logs (
     ip          TEXT,
     created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- SmartWaste AI chat history (assistant conversations).
+-- `role` records which assistant owned the conversation ('citizen'/'admin');
+-- administrators have no row in users, so their conversations keep
+-- user_id NULL. `state` holds the JSON slot-machine state used by the
+-- conversational complaint-registration flow - never any secret material.
+CREATE TABLE IF NOT EXISTS chat_conversations (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id    INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    role       TEXT    NOT NULL DEFAULT 'citizen',
+    title      TEXT    NOT NULL DEFAULT 'New conversation',
+    language   TEXT    NOT NULL DEFAULT 'en',
+    state      TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS chat_messages (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    conversation_id INTEGER NOT NULL REFERENCES chat_conversations(id) ON DELETE CASCADE,
+    sender          TEXT    NOT NULL,
+    message         TEXT    NOT NULL,
+    meta            TEXT,
+    created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_chat_conv_user    ON chat_conversations(user_id, role);
+CREATE INDEX IF NOT EXISTS idx_chat_conv_updated ON chat_conversations(updated_at);
+CREATE INDEX IF NOT EXISTS idx_chat_msg_conv     ON chat_messages(conversation_id, id);
 
 CREATE INDEX IF NOT EXISTS idx_reports_status      ON reports(status);
 CREATE INDEX IF NOT EXISTS idx_reports_created     ON reports(created_at);
