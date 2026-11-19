@@ -328,7 +328,7 @@ function renderDashboardCharts(data) {
           backgroundColor: c.urgency.map((r) => ({
             'Emergency': SW_COLORS.red, 'High': SW_COLORS.rose, 'Medium': SW_COLORS.amber,
             'Low': SW_COLORS.emerald
-          }[r.label] || SW_COLORS.slate), borderWidth: 2, borderColor: '#fff' }]
+          }[r.label] || SW_COLORS.slate)), borderWidth: 2, borderColor: '#fff' }]
       },
       options: { responsive: true, maintainAspectRatio: false, cutout: '62%',
         plugins: { legend: { position: 'right', labels: { boxWidth: 11, usePointStyle: true, font: { size: 11.5 } } } } }
